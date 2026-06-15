@@ -46,6 +46,9 @@ export async function startCheckoutSession(items: CheckoutCartItem[]): Promise<s
   if (!user) throw new Error('Not authenticated')
   if (!items.length) throw new Error('Cart is empty')
 
+  // Include both user_id (Supabase) and user_email so the webhook can resolve
+  // the Aurora user row without a session cookie.
+
   const line_items: import('stripe').Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item) => {
     const canonicalPrice = getCanonicalPrice(item)
     if (canonicalPrice === null) {
@@ -76,6 +79,7 @@ export async function startCheckoutSession(items: CheckoutCartItem[]): Promise<s
     line_items,
     metadata: {
       user_id: user.id,
+      user_email: user.email ?? '',
       // Serialize cart so the webhook / completion handler can recreate companions
       cart: JSON.stringify(
         items.map((i) => ({
@@ -94,59 +98,16 @@ export async function startCheckoutSession(items: CheckoutCartItem[]): Promise<s
 }
 
 /**
- * Called after Stripe confirms payment_intent.succeeded.
- * Creates companion rows and records the order in Supabase.
+ * Client-side fallback — called after the embedded checkout UI reports
+ * completion. The webhook is the primary fulfillment path; this is a safety
+ * net for cases where the webhook hasn't fired yet when the user's browser
+ * gets the completion event (race condition window is typically < 2 seconds).
+ *
+ * Safe to call multiple times — fulfillCheckoutSession is fully idempotent.
  */
 export async function fulfillOrder(sessionId: string) {
-  const session = await stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ['payment_intent'],
-  })
-
-  if (session.payment_status !== 'paid') {
-    return { error: 'Payment not completed' }
-  }
-
-  const supabase = await createClient()
-  const userId = session.metadata?.user_id
-  if (!userId) return { error: 'Missing user_id in session metadata' }
-
-  // Idempotency guard — if this session was already fulfilled, return the
-  // companions that were created on the first call instead of duplicating.
-  const { data: existingOrder } = await supabase
-    .from('orders')
-    .select('id, companions:companions(id, name, color, emoji, companion_type)')
-    .eq('stripe_session_id', sessionId)
-    .maybeSingle()
-
-  if (existingOrder) {
-    const companions = (existingOrder.companions as { id: string; name: string; color: string; emoji: string; companion_type: string }[] | null) ?? []
-    return { success: true, companions }
-  }
-
-  const items: CheckoutCartItem[] = JSON.parse(session.metadata?.cart ?? '[]')
-  const totalCents = session.amount_total ?? 0
-
-  // Create companion rows for companion-type purchases
-  const createdCompanions: { id: string; name: string; color: string; emoji: string; companion_type: string }[] = []
-  for (const item of items) {
-    if ((item.type === 'prebuilt' || item.type === 'custom') && item.companionMeta) {
-      const { data, error } = await supabase
-        .from('companions')
-        .insert({ user_id: userId, name: item.name, ...item.companionMeta })
-        .select('id, name, color, emoji, companion_type')
-        .single()
-      if (!error && data) createdCompanions.push(data)
-    }
-  }
-
-  // Record order as paid
-  await supabase.from('orders').insert({
-    user_id: userId,
-    items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, type: i.type })),
-    total_cents: totalCents,
-    status: 'completed',
-    stripe_session_id: sessionId,
-  })
-
-  return { success: true, companions: createdCompanions }
+  const { fulfillCheckoutSession } = await import('@/lib/fulfill-order')
+  const result = await fulfillCheckoutSession(sessionId)
+  if (!result.success) return { error: result.error }
+  return { success: true, companions: result.companions }
 }
