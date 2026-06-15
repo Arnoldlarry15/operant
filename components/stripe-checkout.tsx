@@ -6,6 +6,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Loader2, CheckCircle, ArrowRight, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { startCheckoutSession, fulfillOrder } from '@/lib/stripe-actions'
+import { useAppState } from '@/lib/app-state'
 import type { CheckoutCartItem } from '@/lib/actions'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
@@ -26,6 +27,7 @@ type Props = {
 
 export function StripeCheckout({ items, onSuccess, onCancel }: Props) {
   const [completing, setCompleting] = useState(false)
+  const { clearCart } = useAppState()
 
   const fetchClientSecret = useCallback(
     () => startCheckoutSession(items),
@@ -39,9 +41,11 @@ export function StripeCheckout({ items, onSuccess, onCancel }: Props) {
     try {
       const result = await fulfillOrder(event.sessionId)
       if ('error' in result) throw new Error(result.error)
+      clearCart()
       onSuccess(result.companions ?? [])
     } catch {
-      // fulfillOrder failed — still call onSuccess with no companions so UX unblocks
+      // fulfillOrder failed — still unblock UX; webhook will handle fulfillment
+      clearCart()
       onSuccess([])
     } finally {
       setCompleting(false)

@@ -155,3 +155,190 @@ export async function recordPurchase(
     return res.rows[0] as PurchaseRow
   })
 }
+
+// ---------------------------------------------------------------------------
+// Free companion (one per user)
+// ---------------------------------------------------------------------------
+
+export async function createFreeCompanion(
+  userId: string,
+  input: { name: string; color: string; emoji: string; trait: string },
+): Promise<{ data?: CompanionRow; error?: string }> {
+  // One free companion per user
+  const existing = await query<CompanionRow>(
+    `SELECT id FROM companions WHERE user_id = $1 AND companion_type = 'free' LIMIT 1`,
+    [userId],
+  )
+  if (existing.rows.length > 0) return { data: existing.rows[0] }
+
+  const { rows } = await query<CompanionRow>(
+    `INSERT INTO companions (user_id, name, companion_type, trait, emoji, color, model)
+     VALUES ($1, $2, 'free', $3, $4, $5, 'openai/gpt-4o-mini')
+     RETURNING *`,
+    [userId, input.name, input.trait, input.emoji, input.color],
+  )
+  return { data: rows[0] }
+}
+
+// ---------------------------------------------------------------------------
+// Companion skills
+// ---------------------------------------------------------------------------
+
+export async function getCompanionSkills(
+  userId: string,
+  companionId: string,
+): Promise<{ skill_id: string; skill_name: string; created_at: string }[]> {
+  const { rows } = await query<{ skill_id: string; skill_name: string; created_at: string }>(
+    `SELECT skill_id, skill_name, created_at
+     FROM companion_skills
+     WHERE companion_id = $1 AND user_id = $2
+     ORDER BY created_at ASC`,
+    [companionId, userId],
+  )
+  return rows
+}
+
+export async function installCompanionSkill(
+  userId: string,
+  companionId: string,
+  skillId: string,
+  skillName: string,
+): Promise<{ skill_id: string; skill_name: string } | { error: string }> {
+  // Ownership check
+  const own = await query(
+    `SELECT id FROM companions WHERE id = $1 AND user_id = $2`,
+    [companionId, userId],
+  )
+  if (own.rows.length === 0) return { error: 'Companion not found or access denied' }
+
+  // Duplicate check
+  const dup = await query(
+    `SELECT skill_id FROM companion_skills WHERE companion_id = $1 AND skill_id = $2`,
+    [companionId, skillId],
+  )
+  if (dup.rows.length > 0) return { error: 'Skill already installed' }
+
+  const { rows } = await query<{ skill_id: string; skill_name: string }>(
+    `INSERT INTO companion_skills (companion_id, user_id, skill_id, skill_name)
+     VALUES ($1, $2, $3, $4)
+     RETURNING skill_id, skill_name`,
+    [companionId, userId, skillId, skillName],
+  )
+  return rows[0]
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+export type OrderRow = {
+  id: string
+  user_id: string
+  items: { id: string; name: string; price: number; type: string }[]
+  total_cents: number
+  status: string
+  stripe_session_id: string | null
+  created_at: string
+}
+
+export async function listOrders(userId: string): Promise<OrderRow[]> {
+  const { rows } = await query<OrderRow>(
+    `SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC`,
+    [userId],
+  )
+  return rows
+}
+
+export async function findOrderByStripeSession(sessionId: string): Promise<OrderRow | null> {
+  const { rows } = await query<OrderRow>(
+    `SELECT * FROM orders WHERE stripe_session_id = $1 LIMIT 1`,
+    [sessionId],
+  )
+  return rows[0] ?? null
+}
+
+export async function insertOrder(
+  userId: string,
+  args: {
+    items: { id: string; name: string; price: number; type: string }[]
+    totalCents: number
+    status: string
+    stripeSessionId?: string | null
+  },
+): Promise<OrderRow> {
+  const { rows } = await query<OrderRow>(
+    `INSERT INTO orders (user_id, items, total_cents, status, stripe_session_id)
+     VALUES ($1, $2::jsonb, $3, $4, $5)
+     RETURNING *`,
+    [
+      userId,
+      JSON.stringify(args.items),
+      args.totalCents,
+      args.status,
+      args.stripeSessionId ?? null,
+    ],
+  )
+  return rows[0]
+}
+
+// ---------------------------------------------------------------------------
+// Milestones
+// ---------------------------------------------------------------------------
+
+export async function completeMilestone(
+  userId: string,
+  milestoneId: string,
+  xpAwarded: number,
+): Promise<{ data?: { milestone_id: string }; error?: string }> {
+  try {
+    const { rows } = await query<{ milestone_id: string }>(
+      `INSERT INTO user_milestones (user_id, milestone_id, xp_awarded)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, milestone_id) DO NOTHING
+       RETURNING milestone_id`,
+      [userId, milestoneId, xpAwarded],
+    )
+    return { data: rows[0] ?? { milestone_id: milestoneId } }
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+export async function getMilestones(userId: string): Promise<string[]> {
+  const { rows } = await query<{ milestone_id: string }>(
+    `SELECT milestone_id FROM user_milestones WHERE user_id = $1`,
+    [userId],
+  )
+  return rows.map((r) => r.milestone_id)
+}
+
+// ---------------------------------------------------------------------------
+// Pending skills (shop upgrades not yet assigned to a companion)
+// ---------------------------------------------------------------------------
+
+export async function insertPendingSkill(
+  userId: string,
+  skillId: string,
+  skillName: string,
+  stripeSessionId: string,
+): Promise<void> {
+  await query(
+    `INSERT INTO pending_skills (user_id, skill_id, skill_name, stripe_session_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT DO NOTHING`,
+    [userId, skillId, skillName, stripeSessionId],
+  )
+}
+
+export async function listPendingSkills(
+  userId: string,
+): Promise<{ id: string; skill_id: string; skill_name: string; created_at: string }[]> {
+  const { rows } = await query<{ id: string; skill_id: string; skill_name: string; created_at: string }>(
+    `SELECT id, skill_id, skill_name, created_at
+     FROM pending_skills
+     WHERE user_id = $1
+     ORDER BY created_at ASC`,
+    [userId],
+  )
+  return rows
+}

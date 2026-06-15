@@ -1,10 +1,27 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prebuiltAIs, personalities, cores, appearances, shopItems, skills as skillsData } from '@/lib/store-data'
+import {
+  createCompanion,
+  listCompanions,
+  getCompanion as getCompanionQuery,
+  addCompanionXP,
+  getConversation,
+  saveMessage as saveMessageQuery,
+  recordPurchase,
+  getCompanionSkills,
+  installCompanionSkill,
+  listOrders,
+  completeMilestone as completeMilestoneQuery,
+  getMilestones as getMilestonesQuery,
+  createFreeCompanion as createFreeCompanionQuery,
+} from '@/lib/queries'
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+// Auth always goes through Supabase; data always goes through Aurora.
 
 export async function signUp(email: string, password: string, displayName: string) {
   const supabase = await createClient()
@@ -41,39 +58,18 @@ export async function getUser() {
   return user
 }
 
-export async function getProfile() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-  return data
-}
-
 // ─── Companions ───────────────────────────────────────────────────────────────
 
 export async function getCompanion(id: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return null
-  const { data } = await supabase
-    .from('companions')
-    .select('*, companion_skills(*)')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single()
-  return data ?? null
+  return getCompanionQuery(user.id, id)
 }
 
 export async function getCompanions() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return []
-  const { data } = await supabase
-    .from('companions')
-    .select('*, companion_skills(*)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true })
-  return data ?? []
+  return listCompanions(user.id)
 }
 
 export async function createFreeCompanion(companion: {
@@ -82,35 +78,9 @@ export async function createFreeCompanion(companion: {
   emoji: string
   trait: string
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'Not authenticated' }
-
-  // Only allow one free companion per user
-  const { data: existing } = await supabase
-    .from('companions')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('companion_type', 'free')
-    .single()
-
-  if (existing) return { data: existing }
-
-  const { data, error } = await supabase
-    .from('companions')
-    .insert({
-      user_id: user.id,
-      companion_type: 'free',
-      name: companion.name,
-      color: companion.color,
-      emoji: companion.emoji,
-      trait: companion.trait,
-    })
-    .select()
-    .single()
-
-  if (error) return { error: error.message }
-  return { data }
+  return createFreeCompanionQuery(user.id, companion)
 }
 
 export async function createPurchasedCompanion(companion: {
@@ -123,143 +93,77 @@ export async function createPurchasedCompanion(companion: {
   color?: string
   emoji?: string
   trait?: string
+  model?: string
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { data, error } = await supabase
-    .from('companions')
-    .insert({ user_id: user.id, ...companion })
-    .select()
-    .single()
-
-  if (error) return { error: error.message }
+  const data = await createCompanion(user.id, {
+    name: companion.name,
+    companionType: companion.companion_type,
+    trait: companion.trait ?? '',
+    persona: '',
+    emoji: companion.emoji ?? '🤖',
+    color: companion.color ?? '#6366f1',
+    model: companion.model ?? 'openai/gpt-4o',
+    skills: [],
+  })
   return { data }
 }
 
 export async function updateCompanionXP(companionId: string, xpToAdd: number) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'Not authenticated' }
-
-  // Use an atomic increment via RPC to avoid read-modify-write races when
-  // multiple messages arrive in quick succession.
-  const { data, error } = await supabase.rpc('increment_companion_xp', {
-    p_companion_id: companionId,
-    p_user_id: user.id,
-    p_xp: xpToAdd,
-  })
-
-  if (error) {
-    // Fallback: read-modify-write if the RPC isn't deployed yet
-    const { data: current } = await supabase
-      .from('companions')
-      .select('xp, level, message_count')
-      .eq('id', companionId)
-      .eq('user_id', user.id)
-      .single()
-
-    if (!current) return { error: 'Companion not found' }
-
-    const newXP = current.xp + xpToAdd
-    const newLevel = Math.floor(newXP / 100) + 1
-    const newMsgCount = current.message_count + 1
-
-    await supabase
-      .from('companions')
-      .update({ xp: newXP, level: Math.max(current.level, newLevel), message_count: newMsgCount })
-      .eq('id', companionId)
-      .eq('user_id', user.id)
-
-    return { xp: newXP, level: Math.max(current.level, newLevel) }
-  }
-
-  return data as { xp: number; level: number }
+  // addCompanionXP in queries.ts does an atomic UPDATE ... RETURNING
+  const updated = await addCompanionXP(user.id, companionId, xpToAdd)
+  if (!updated) return { error: 'Companion not found' }
+  return { xp: updated.xp, level: updated.level }
 }
 
 export async function installSkill(companionId: string, skillId: string, skillName: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // Verify the companion belongs to the authenticated user before installing
-  const { data: companion } = await supabase
-    .from('companions')
-    .select('id')
-    .eq('id', companionId)
-    .eq('user_id', user.id)
-    .single()
-
-  if (!companion) return { error: 'Companion not found or access denied' }
-
-  // Prevent duplicate skill installs
-  const { data: existing } = await supabase
-    .from('companion_skills')
-    .select('id')
-    .eq('companion_id', companionId)
-    .eq('skill_id', skillId)
-    .maybeSingle()
-
-  if (existing) return { error: 'Skill already installed' }
-
-  const { data, error } = await supabase
-    .from('companion_skills')
-    .insert({ companion_id: companionId, user_id: user.id, skill_id: skillId, skill_name: skillName })
-    .select()
-    .single()
-
-  if (error) return { error: error.message }
-  return { data }
+  // Ownership check happens inside installCompanionSkill
+  const result = await installCompanionSkill(user.id, companionId, skillId, skillName)
+  if ('error' in result) return result
+  return { data: result }
 }
 
 // ─── Messages ─────────────────────────────────────────────────────────────────
 
 export async function getMessages(companionId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return []
-
-  const { data } = await supabase
-    .from('companion_messages')
-    .select('*')
-    .eq('companion_id', companionId)
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true })
-    .limit(100)
-
-  return data ?? []
+  const rows = await getConversation(user.id, companionId, 100)
+  // Map Aurora role ('user'|'assistant') to UI role ('user'|'ai')
+  return rows.map((r) => ({
+    id: r.id,
+    role: r.role === 'assistant' ? 'ai' : 'user' as 'user' | 'ai',
+    content: r.content,
+    created_at: r.created_at,
+  }))
 }
 
-export async function saveMessage(companionId: string, role: 'user' | 'ai', content: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export async function saveMessage(
+  companionId: string,
+  role: 'user' | 'ai',
+  content: string,
+) {
+  const user = await getCurrentUser()
   if (!user) return { error: 'Not authenticated' }
-
-  const { data, error } = await supabase
-    .from('companion_messages')
-    .insert({ companion_id: companionId, user_id: user.id, role, content })
-    .select()
-    .single()
-
-  if (error) return { error: error.message }
-  return { data }
+  // Map UI role back to Aurora role
+  const dbRole = role === 'ai' ? 'assistant' : 'user'
+  const row = await saveMessageQuery(user.id, companionId, dbRole as 'user' | 'assistant', content)
+  return { data: row }
 }
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
 export async function getOrders() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return []
-
-  const { data } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  return data ?? []
+  return listOrders(user.id)
 }
 
 // ─── Checkout ─────────────────────────────────────────────────────────────────
@@ -278,6 +182,7 @@ export type CheckoutCartItem = {
     color?: string
     emoji?: string
     trait?: string
+    model?: string
   }
 }
 
@@ -301,68 +206,60 @@ function resolveCanonicalPrice(item: CheckoutCartItem): number {
     const sk = skillsData.find((x) => x.id === id)
     if (sk) return sk.price
   }
-  return item.price // fallback — should not reach in production
+  return item.price
 }
 
 export async function checkout(items: CheckoutCartItem[]) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // Always compute total from server-side canonical prices
-  const totalCents = Math.round(items.reduce((sum, i) => sum + resolveCanonicalPrice(i), 0) * 100)
+  const totalCents = Math.round(
+    items.reduce((sum, i) => sum + resolveCanonicalPrice(i), 0) * 100
+  )
 
-  // Create companion rows for every companion-type item
   const createdCompanions: { id: string; name: string; color: string; emoji: string; companion_type: string }[] = []
   for (const item of items) {
     if ((item.type === 'prebuilt' || item.type === 'custom') && item.companionMeta) {
-      const { data, error } = await supabase
-        .from('companions')
-        .insert({ user_id: user.id, name: item.name, ...item.companionMeta })
-        .select('id, name, color, emoji, companion_type')
-        .single()
-      if (!error && data) createdCompanions.push(data)
+      const meta = item.companionMeta
+      const companion = await createCompanion(user.id, {
+        name: item.name,
+        companionType: meta.companion_type,
+        trait: meta.trait ?? '',
+        persona: '',
+        emoji: meta.emoji ?? '🤖',
+        color: meta.color ?? '#6366f1',
+        model: meta.model ?? 'openai/gpt-4o',
+        skills: [],
+      })
+      createdCompanions.push({
+        id: companion.id,
+        name: companion.name,
+        color: companion.color,
+        emoji: companion.emoji,
+        companion_type: companion.companion_type,
+      })
     }
   }
 
-  // Record the order
-  const { data: orderData, error: orderError } = await supabase.from('orders').insert({
-    user_id: user.id,
+  const order = await recordPurchase(user.id, {
     items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, type: i.type })),
-    total_cents: totalCents,
+    totalCents,
     status: 'completed',
-  }).select('id').single()
+  })
 
-  if (orderError) return { error: orderError.message }
-  return { success: true, orderId: orderData?.id ?? '', companions: createdCompanions }
+  return { success: true, orderId: order.id, companions: createdCompanions }
 }
 
 // ─── Milestones ───────────────────────────────────────────────────────────────
 
 export async function completeMilestone(milestoneId: string, xpAwarded: number) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'Not authenticated' }
-
-  const { data, error } = await supabase
-    .from('user_milestones')
-    .insert({ user_id: user.id, milestone_id: milestoneId, xp_awarded: xpAwarded })
-    .select()
-    .single()
-
-  if (error && error.code !== '23505') return { error: error.message } // ignore duplicate
-  return { data }
+  return completeMilestoneQuery(user.id, milestoneId, xpAwarded)
 }
 
 export async function getMilestones() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return []
-
-  const { data } = await supabase
-    .from('user_milestones')
-    .select('milestone_id')
-    .eq('user_id', user.id)
-
-  return data?.map((m) => m.milestone_id) ?? []
+  return getMilestonesQuery(user.id)
 }
