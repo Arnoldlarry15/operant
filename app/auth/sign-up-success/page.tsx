@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 
@@ -30,7 +30,7 @@ export default function SignUpSuccessPage() {
           </CardHeader>
           <CardContent className="pb-2">
             <p className="text-muted-foreground leading-relaxed">
-              We sent a confirmation link to your email address. Click the link to activate your account and meet your free AI companion.
+              We sent a confirmation link to your email address. Click the link to activate your account and start building your first AI agent.
             </p>
             <div className="mt-4 rounded-lg bg-muted/50 border border-border/50 px-4 py-3 text-sm text-muted-foreground">
               Didn&apos;t receive it? Check your spam folder, or try signing up again with the same email.

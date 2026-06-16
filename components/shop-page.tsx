@@ -91,7 +91,7 @@ export function ShopPage() {
             The Operant Shop
           </Badge>
           <h1 className="font-heading font-bold text-3xl md:text-5xl text-balance">
-            Upgrade Your <span className="text-gradient-ember">AI Companion</span>
+            Upgrade Your <span className="text-gradient-ember">AI Agent</span>
           </h1>
           <p className="text-muted-foreground mt-3 max-w-2xl mx-auto text-pretty">
             New skills, appearances, tools, and power upgrades drop regularly. Your AI never has to stay the same.
@@ -195,7 +195,7 @@ export function ShopPage() {
           <TabsContent value="skills">
             <div className="mb-6">
               <h2 className="font-heading font-bold text-lg mb-1">All Available Skills</h2>
-              <p className="text-sm text-muted-foreground">Add any of these skills to your AI companion at any time.</p>
+              <p className="text-sm text-muted-foreground">Add any of these skills to your AI agent at any time.</p>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {skills.map((skill) => {

@@ -1,5 +1,3 @@
-"use client"
-
 export type AIPersonality = {
   id: string
   name: string
@@ -98,7 +96,7 @@ export const personalities: AIPersonality[] = [
   },
   {
     id: 'empathetic',
-    name: 'The Companion',
+    name: 'The Empath',
     label: 'Empathetic',
     description: 'Warm, supportive, and always listening. Best for emotional support, journaling, and personal growth.',
     traits: ['Caring', 'Attentive', 'Gentle', 'Understanding'],
@@ -301,7 +299,7 @@ export const shopItems: ShopItem[] = [
   { id: 's3', name: 'Neon Outfit', description: 'Give your AI a glowing neon aesthetic look', category: 'appearance', price: 12, tier: 'basic', isSale: true, salePrice: 8, color: '#a855f7', icon: 'Sparkles' },
   { id: 's4', name: 'Quantum Leap', description: 'Upgrade to Quantum Core for 10x faster processing', category: 'upgrade', price: 99, tier: 'elite', color: '#f59e0b', icon: 'Zap' },
   { id: 's5', name: 'Video Analyzer', description: 'Analyze and summarize video content from any URL', category: 'tool', price: 29, tier: 'pro', isNew: true, color: '#fb923c', icon: 'Video' },
-  { id: 's6', name: 'Dragon Armor', description: 'Legendary armor appearance for your AI companion', category: 'accessory', price: 34, tier: 'elite', color: '#ef4444', icon: 'Shield' },
+  { id: 's6', name: 'Dragon Armor', description: 'Legendary armor appearance for your AI agent', category: 'accessory', price: 34, tier: 'elite', color: '#ef4444', icon: 'Shield' },
   { id: 's7', name: 'Stock Watcher', description: 'Real-time stock and crypto market alerts', category: 'tool', price: 19, tier: 'pro', color: '#22d3ee', icon: 'TrendingUp' },
   { id: 's8', name: 'Personality Reset', description: 'Reset and reconfigure your AI personality', category: 'upgrade', price: 15, tier: 'basic', color: '#94a3b8', icon: 'RefreshCw' },
   { id: 's9', name: 'Galaxy Skin', description: 'Deep space galaxy aesthetic skin pack', category: 'appearance', price: 22, tier: 'pro', isSale: true, salePrice: 14, color: '#3b82f6', icon: 'Stars' },

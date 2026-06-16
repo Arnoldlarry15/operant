@@ -49,13 +49,13 @@ export default function LoginPage() {
             </div>
             <span className="text-2xl font-bold font-sans tracking-tight text-foreground">Operant</span>
           </Link>
-          <p className="text-muted-foreground mt-2 text-sm">Your AI companion platform</p>
+          <p className="text-muted-foreground mt-2 text-sm">Your AI agent platform</p>
         </div>
 
         <Card className="border-border/50 bg-card shadow-2xl">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl font-bold">Welcome back</CardTitle>
-            <CardDescription>Sign in to access your AI companions</CardDescription>
+            <CardDescription>Sign in to access your AI agents</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="flex flex-col gap-4">

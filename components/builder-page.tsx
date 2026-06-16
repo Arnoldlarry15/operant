@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from 'react'
 import { Check, ChevronRight, ChevronLeft, Zap, Bot, Sparkles, ShoppingCart, Info } from 'lucide-react'
@@ -65,7 +65,7 @@ export function BuilderPage() {
             Custom AI Builder
           </Badge>
           <h1 className="font-heading font-bold text-3xl md:text-4xl text-balance">
-            Build Your Perfect <span className="text-gradient">AI Companion</span>
+            Build Your Perfect <span className="text-gradient">AI Agent</span>
           </h1>
           <p className="text-muted-foreground mt-2 text-sm">Pick each component step by step. No technical knowledge needed.</p>
         </div>
@@ -124,7 +124,7 @@ export function BuilderPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           {p.price === 0 ? (
-                            <Badge variant="secondary" className="text-xs">Free</Badge>
+                            <Badge variant="secondary" className="text-xs">Included</Badge>
                           ) : (
                             <span className="text-sm font-bold" style={{ color: p.color }}>${p.price}</span>
                           )}
@@ -183,7 +183,7 @@ export function BuilderPage() {
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         {c.price === 0 ? (
-                          <Badge className="text-xs" style={{ background: 'oklch(0.75 0.18 195 / 15%)', color: 'oklch(0.82 0.2 195)' }}>Free</Badge>
+                          <Badge className="text-xs" style={{ background: 'oklch(0.75 0.18 195 / 15%)', color: 'oklch(0.82 0.2 195)' }}>Included</Badge>
                         ) : (
                           <span className="text-base font-bold text-primary">${c.price}</span>
                         )}
@@ -213,7 +213,7 @@ export function BuilderPage() {
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <p className="text-sm text-muted-foreground">Pick your AI&apos;s visual style. Choose carefully — you can only change this by paying a reset fee later.</p>
+                <p className="text-sm text-muted-foreground">Pick your AI&apos;s visual style. Choose carefully - you can only change this by paying a reset fee later.</p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   {appearances.map((a) => (
                     <button
@@ -231,7 +231,7 @@ export function BuilderPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           {a.price === 0 ? (
-                            <Badge variant="secondary" className="text-xs">Free</Badge>
+                            <Badge variant="secondary" className="text-xs">Included</Badge>
                           ) : (
                             <span className="text-sm font-bold" style={{ color: a.color }}>${a.price}</span>
                           )}
@@ -314,7 +314,7 @@ export function BuilderPage() {
                         <p className="text-xs text-muted-foreground">{row.label}</p>
                         <p className="text-sm font-semibold" style={{ color: row.color }}>{row.value ?? 'Not selected'}</p>
                       </div>
-                      <span className="text-sm font-bold">{row.price === 0 ? 'Free' : `$${row.price}`}</span>
+                      <span className="text-sm font-bold">{row.price === 0 ? 'Included' : `$${row.price}`}</span>
                     </div>
                   ))}
                   <div className="flex items-start justify-between py-2 border-b border-border">
@@ -343,7 +343,7 @@ export function BuilderPage() {
                     disabled={!selectedPersonality || !selectedCore || !selectedAppearance}
                   >
                     <ShoppingCart className="size-5" data-icon="inline-start" />
-                    Add to Cart — ${totalPrice}
+                    Add to Cart - ${totalPrice}
                   </Button>
                   {(!selectedPersonality || !selectedCore || !selectedAppearance) && (
                     <p className="text-xs text-muted-foreground text-center">Please complete all required steps (personality, core, appearance) first.</p>

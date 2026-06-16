@@ -16,7 +16,7 @@ import { StripeCheckout, CheckoutSuccess } from '@/components/stripe-checkout'
 const navLinks = [
   { label: 'Home', page: 'home' as const },
   { label: 'Build Your AI', page: 'builder' as const },
-  { label: 'Pre-built AIs', page: 'prebuilt' as const },
+  { label: 'Prebuilt Agents', page: 'prebuilt' as const },
   { label: 'Shop', page: 'shop' as const },
   { label: 'My Dashboard', page: 'dashboard' as const },
 ]
@@ -203,13 +203,13 @@ export function Navbar() {
                       <ShoppingCart className="size-7 text-muted-foreground" />
                     </div>
                     <p className="font-heading font-semibold">Nothing here yet</p>
-                    <p className="text-muted-foreground text-sm">Add companions or upgrades to get started.</p>
+                    <p className="text-muted-foreground text-sm">Add agents or upgrades to get started.</p>
                     <Button
                       size="sm"
                       onClick={() => { handleClose(); setPage('prebuilt') }}
                       style={{ background: 'oklch(0.75 0.18 195)', color: '#000' }}
                     >
-                      Browse Pre-built AIs
+                      Browse Prebuilt Agents
                     </Button>
                   </div>
                 ) : (
@@ -232,7 +232,7 @@ export function Navbar() {
                           </div>
                           <div className="flex flex-col gap-0.5 min-w-0">
                             <span className="text-sm font-medium truncate">{item.name}</span>
-                            <span className="text-xs text-muted-foreground capitalize">{item.type === 'prebuilt' ? 'Pre-built AI' : item.type === 'custom' ? 'Custom AI' : 'Upgrade'}</span>
+                            <span className="text-xs text-muted-foreground capitalize">{item.type === 'prebuilt' ? 'Prebuilt agent' : item.type === 'custom' ? 'Custom agent' : 'Upgrade'}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">

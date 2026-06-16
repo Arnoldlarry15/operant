@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+﻿@import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
@@ -54,7 +54,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Dark-first AI companion store theme */
+/* Dark-first AI agent store theme */
 :root {
   --background: oklch(0.09 0.01 260);
   --foreground: oklch(0.96 0.005 260);

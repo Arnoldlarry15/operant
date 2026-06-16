@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { User, Session } from '@supabase/supabase-js'
 
 type AuthContextType = {
@@ -28,18 +28,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<{ id: string; display_name: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const supabase = createClient()
-
   const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('id, display_name').eq('id', userId).single()
-    if (data) setProfile(data)
-  }, [supabase])
+    const displayName =
+      user?.user_metadata?.display_name ??
+      user?.user_metadata?.name ??
+      user?.email?.split('@')[0] ??
+      null
+    setProfile({ id: userId, display_name: displayName })
+  }, [user])
 
   const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.id)
   }, [user, fetchProfile])
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setLoading(false)
+      return
+    }
+
+    const supabase = createClient()
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -61,6 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function signOut() {
+    if (!isSupabaseConfigured()) return
+    const supabase = createClient()
     await supabase.auth.signOut()
     setUser(null)
     setSession(null)

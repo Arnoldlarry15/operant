@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { ShoppingCart, Check, Sparkles, Zap, ArrowRight, Star } from 'lucide-react'
+import { ShoppingCart, Check, Sparkles, Zap, Star } from 'lucide-react'
 import { useAppState } from '@/lib/app-state'
 import { prebuiltAIs } from '@/lib/store-data'
 import { Button } from '@/components/ui/button'
@@ -48,13 +48,13 @@ export function PrebuiltPage() {
         <div className="text-center mb-12">
           <Badge className="mb-4 text-xs" style={{ background: 'oklch(0.68 0.18 280 / 10%)', borderColor: 'oklch(0.68 0.18 280 / 30%)', color: 'oklch(0.75 0.18 280)' }}>
             <Sparkles className="size-3 mr-1" />
-            5 Signature Companions
+            5 Signature Agents
           </Badge>
           <h1 className="font-heading font-bold text-3xl md:text-5xl text-balance">
-            Meet Your Next <span className="text-gradient">AI Companion</span>
+            Meet Your Next <span className="text-gradient">AI Agent</span>
           </h1>
           <p className="text-muted-foreground mt-3 max-w-2xl mx-auto text-pretty">
-            Each pre-built AI is a carefully crafted companion with a distinct personality, curated skills, and its own identity. Ready to deploy the moment you buy.
+            Each pre-built AI is a carefully crafted agent with a distinct operating style, curated skills, and its own identity. Ready in your dashboard the moment you buy.
           </p>
         </div>
 

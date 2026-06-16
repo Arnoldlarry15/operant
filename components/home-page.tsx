@@ -14,7 +14,7 @@ export function HomePage() {
     {
       icon: Bot,
       title: 'Build From Scratch',
-      description: 'Pick your AI\'s personality, core power, appearance, and skills — one click at a time.',
+      description: 'Pick your AI\'s personality, core power, appearance, and skills - one click at a time.',
       color: '#22d3ee',
       action: () => setPage('builder'),
       cta: 'Start Building',
@@ -22,7 +22,7 @@ export function HomePage() {
     {
       icon: Sparkles,
       title: 'Ready-Made AIs',
-      description: '5 pre-configured companions with curated personalities and skill sets. Ready to go instantly.',
+      description: '5 pre-configured agents with curated operating styles and skill sets. Ready to go instantly.',
       color: '#a855f7',
       action: () => setPage('prebuilt'),
       cta: 'Browse AIs',
@@ -37,8 +37,8 @@ export function HomePage() {
     },
     {
       icon: Shield,
-      title: 'Free Starter AI',
-      description: 'Every account gets a free AI — auto-generated on signup, no setup required. Level it up through daily chats and milestones.',
+      title: 'Guided Setup',
+      description: 'Use the embedded support bot to choose agents, understand upgrades, and find your purchased agents.',
       color: '#4ade80',
       action: () => setPage('dashboard'),
       cta: 'Meet Yours',
@@ -46,10 +46,10 @@ export function HomePage() {
   ]
 
   const stats = [
-    { label: 'AI Companions Built', value: '142K+', icon: Bot },
+    { label: 'AI Agents Built', value: '142K+', icon: Bot },
     { label: 'Skills Available', value: '200+', icon: Zap },
     { label: 'Happy Users', value: '89K+', icon: Users },
-    { label: 'Avg Rating', value: '4.9★', icon: Star },
+    { label: 'Avg Rating', value: '4.9 stars', icon: Star },
   ]
 
   return (
@@ -71,7 +71,7 @@ export function HomePage() {
         <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center gap-6">
           <Badge className="text-xs font-semibold px-3 py-1.5 border" style={{ background: 'oklch(0.75 0.18 195 / 10%)', borderColor: 'oklch(0.75 0.18 195 / 30%)', color: 'oklch(0.82 0.2 195)' }}>
             <Zap className="size-3 mr-1" />
-            Every account includes a FREE AI Companion
+            Build, buy, and upgrade AI agents
           </Badge>
 
           <h1 className="font-heading font-bold text-5xl md:text-7xl leading-tight tracking-tight text-balance">
@@ -82,7 +82,7 @@ export function HomePage() {
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed text-pretty">
-            Design your perfect AI companion from the ground up — choose its personality, power, look, and skills. No code required. No technical knowledge needed. Just you and your imagination.
+            Design your perfect AI agent from the ground up: choose its personality, power, look, and skills. No code required. No technical knowledge needed. Just you and your imagination.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
@@ -101,12 +101,12 @@ export function HomePage() {
               size="lg"
               className="px-8 py-3 text-base font-medium rounded-xl border-border hover:bg-accent"
             >
-              See Pre-built AIs
+              See Prebuilt Agents
               <ArrowRight className="size-4" data-icon="inline-end" />
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground">Sign up free — your AI companion is waiting</p>
+          <p className="text-xs text-muted-foreground">Sign up to build, buy, and chat with agents</p>
         </div>
 
         {/* Floating AI cards */}
@@ -165,15 +165,15 @@ export function HomePage() {
               Your AI, Built <span className="text-gradient">Your Way</span>
             </h2>
             <p className="text-muted-foreground mt-3 max-w-xl mx-auto text-pretty">
-              Building your AI companion takes less than 5 minutes. No technical skills needed.
+              Building your AI agent takes less than 5 minutes. No technical skills needed.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { step: '01', title: 'Choose a Personality', desc: 'Pick how your AI thinks, speaks, and behaves. From analytical to creative, there\'s a personality for everyone.', color: '#22d3ee' },
-              { step: '02', title: 'Add Skills & Tools', desc: 'Select the abilities your AI needs. Web search, coding help, fitness coaching — mix and match freely.', color: '#a855f7' },
-              { step: '03', title: 'Meet Your AI', desc: 'Your companion is compiled and ready instantly. Chat with it, upgrade it, and watch it grow over time.', color: '#fb923c' },
+              { step: '02', title: 'Add Skills & Tools', desc: 'Select the abilities your AI needs. Web search, coding help, fitness coaching - mix and match freely.', color: '#a855f7' },
+              { step: '03', title: 'Meet Your AI', desc: 'Your agent is ready instantly in your dashboard. Chat with it and upgrade it when you need more capability.', color: '#fb923c' },
             ].map((item) => (
               <div key={item.step} className="card-glass card-glass-hover rounded-2xl p-6 flex flex-col gap-4 relative overflow-hidden">
                 <div className="font-heading font-bold text-5xl opacity-10 absolute top-4 right-4" style={{ color: item.color }}>
@@ -231,7 +231,7 @@ export function HomePage() {
               <h2 className="font-heading font-bold text-3xl text-balance">
                 Meet Our <span className="text-gradient">Signature AIs</span>
               </h2>
-              <p className="text-muted-foreground mt-1 text-sm">Hand-crafted companions ready to go</p>
+              <p className="text-muted-foreground mt-1 text-sm">Hand-crafted agents ready to go</p>
             </div>
             <Button variant="outline" size="sm" onClick={() => setPage('prebuilt')} className="hidden md:flex">
               View All
@@ -275,7 +275,7 @@ export function HomePage() {
 
           <div className="text-center mt-6 md:hidden">
             <Button variant="outline" onClick={() => setPage('prebuilt')}>
-              View All Pre-built AIs
+              View All Prebuilt Agents
               <ArrowRight className="size-4" data-icon="inline-end" />
             </Button>
           </div>
@@ -292,10 +292,10 @@ export function HomePage() {
                 <Bot className="size-8 text-primary" />
               </div>
               <h2 className="font-heading font-bold text-3xl md:text-4xl text-balance">
-                Your Free AI is Waiting
+                Your Next AI Agent is Waiting
               </h2>
               <p className="text-muted-foreground max-w-lg text-pretty">
-                Every Operant account includes a free AI companion — auto-generated and uniquely yours. It levels up the more you chat with it. No purchase needed to get started.
+                Build a custom agent from scratch or start with a pre-built agent and upgrade it with paid skills when you need more capability.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
@@ -305,7 +305,7 @@ export function HomePage() {
                   style={{ background: 'oklch(0.75 0.18 195)', color: '#000' }}
                 >
                   <TrendingUp className="size-5" data-icon="inline-start" />
-                  Meet My Free AI
+                  View My Agents
                 </Button>
                 <Button
                   onClick={() => setPage('builder')}
@@ -341,3 +341,5 @@ export function HomePage() {
     </div>
   )
 }
+
+

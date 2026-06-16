@@ -10,12 +10,12 @@ const spaceGrotesk = Space_Grotesk({ variable: '--font-space-grotesk', subsets: 
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Operant — Build Your AI Companion',
-  description: 'Design, build, and own your personal AI companion. Choose from pre-built personalities or craft your own from modular components. Every user gets a free AI to start.',
-  keywords: 'AI companion, AI agent, build AI, modular AI, AI personality, AI skills, Operant',
+  title: 'Operant - Build Purpose-Built AI Agents',
+  description: 'Buy prebuilt AI agents, build custom agents from modular components, and upgrade them with specialized skills.',
+  keywords: 'AI agent, custom AI agent, prebuilt AI agent, AI automation, modular AI, AI skills, Operant',
   openGraph: {
-    title: 'Operant — Build Your AI Companion',
-    description: 'Design, build, and own your personal AI companion.',
+    title: 'Operant - Build Purpose-Built AI Agents',
+    description: 'Buy prebuilt AI agents, build custom agents, and upgrade them with specialized skills.',
     type: 'website',
   },
 }
@@ -46,3 +46,4 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   )
 }
+

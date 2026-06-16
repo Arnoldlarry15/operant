@@ -1,0 +1,2 @@
+export const DEFAULT_AGENT_MODEL = 'openai/gpt-5.4'
+export const DEFAULT_SUPPORT_MODEL = DEFAULT_AGENT_MODEL

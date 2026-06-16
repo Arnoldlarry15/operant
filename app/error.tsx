@@ -27,7 +27,7 @@ export default function ErrorBoundary({
         <div>
           <h2 className="text-lg font-bold mb-1">Page failed to load</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Something went wrong on this page. Your companions and data are safe.
+            Something went wrong on this page. Your agents and data are safe.
           </p>
         </div>
 

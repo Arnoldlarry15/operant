@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -16,7 +16,6 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
@@ -63,14 +62,14 @@ export default function SignUpPage() {
             </div>
             <span className="text-2xl font-bold font-sans tracking-tight text-foreground">Operant</span>
           </Link>
-          <p className="text-muted-foreground mt-2 text-sm">Your AI companion platform</p>
+          <p className="text-muted-foreground mt-2 text-sm">Your AI agent platform</p>
         </div>
 
         <Card className="border-border/50 bg-card shadow-2xl">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl font-bold">Create your account</CardTitle>
             <CardDescription>
-              Join Operant and get your free AI companion instantly — no credit card needed.
+              Join Operant to buy prebuilt agents, build custom agents, and add specialized upgrades.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSignUp}>
@@ -117,13 +116,13 @@ export default function SignUpPage() {
                 />
               </div>
 
-              {/* Free AI benefit callout */}
+              {/* Embedded guidance callout */}
               <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 flex items-start gap-3">
                 <span className="text-xl">🎁</span>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Free AI companion included</p>
+                  <p className="text-sm font-semibold text-foreground">Guidance bot included</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Every new account gets a randomly generated AI companion — yours to keep forever.
+                    Every account includes embedded support to help you choose and configure paid agents.
                   </p>
                 </div>
               </div>

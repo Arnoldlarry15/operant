@@ -2,17 +2,16 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, ArrowLeft, Zap, Star, Sparkles, Bot, Cpu, Download } from 'lucide-react'
-import { getCompanion, getMessages, saveMessage, updateCompanionXP } from '@/lib/actions'
+import { Send, ArrowLeft, Zap, Star, Sparkles, Bot, Cpu } from 'lucide-react'
+import { getCompanion, getInstalledSkills, getMessages } from '@/lib/actions'
 import { useAuth } from '@/components/auth-provider'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { DeployModal } from '@/components/deploy-modal'
 
-type InstalledSkill = { id: string; skill_id: string; skill_name: string; installed_at: string }
+type InstalledSkill = { skill_id: string; skill_name: string; created_at: string }
 
 type Companion = {
   id: string
@@ -45,7 +44,6 @@ export default function CompanionDetailPage() {
   const [xp, setXp] = useState(0)
   const [msgCount, setMsgCount] = useState(0)
   const [installedSkills, setInstalledSkills] = useState<InstalledSkill[]>([])
-  const [showDeploy, setShowDeploy] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const loadCompanion = useCallback(async () => {
@@ -66,7 +64,8 @@ export default function CompanionDetailPage() {
     setLevel(c.level)
     setXp(c.xp)
     setMsgCount(c.message_count)
-    setInstalledSkills([])
+    const skills = await getInstalledSkills(id)
+    setInstalledSkills(skills)
 
     const msgs = await getMessages(id)
     if (msgs.length > 0) {
@@ -78,10 +77,9 @@ export default function CompanionDetailPage() {
     } else {
       const greeting: Message = {
         role: 'ai',
-        text: `Hello! I'm ${c.name} — your ${c.companion_type} AI companion. I'm ready to assist you. What would you like to explore today?`,
+        text: `Hello! I'm ${c.name} - your ${c.companion_type} AI agent. I'm ready to assist you. What would you like to explore today?`,
       }
       setMessages([greeting])
-      await saveMessage(id, 'ai', greeting.text)
     }
     setLoading(false)
   }, [user, id, router])
@@ -102,82 +100,71 @@ export default function CompanionDetailPage() {
 
     const newUserMsg: Message = { role: 'user', text }
     setMessages((prev) => [...prev, newUserMsg])
-    await saveMessage(companion.id, 'user', text)
-
-    const result = await updateCompanionXP(companion.id, 8)
-    if (result && 'xp' in result) {
-      setXp(result.xp as number)
-      setLevel(result.level as number)
-    }
+    const nextXp = xp + 8
+    setXp(nextXp)
+    setLevel(Math.max(level, Math.floor(nextXp / 100) + 1))
     setMsgCount((n) => n + 1)
 
     setIsTyping(true)
-
-    // Build the full conversation history in ModelMessage format
-    const allMsgs = [...messages, newUserMsg]
-    const modelMessages = allMsgs.map((m) => ({
-      role: m.role === 'ai' ? 'assistant' : 'user',
-      content: m.text,
-    }))
 
     // Placeholder bubble that we stream tokens into
     setMessages((prev) => [...prev, { role: 'ai', text: '' }])
 
     try {
-      const res = await fetch('/api/chat/companion', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companionId: companion.id, messages: modelMessages }),
+        body: JSON.stringify({ companionId: companion.id, message: text }),
       })
 
-      if (!res.ok || !res.body) throw new Error('Stream failed')
+      if (!res.ok || !res.body) {
+        let errorMessage = 'I ran into a hiccup connecting - give me a moment and try again.'
+        try {
+          const errorBody = await res.json()
+          errorMessage = errorBody?.message ?? errorBody?.error ?? errorMessage
+        } catch {
+          // Keep the generic message when the server did not send JSON.
+        }
+        throw new Error(errorMessage)
+      }
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
-      let buffer = ''
       let fullText = ''
-      // Hide the typing indicator once the first token arrives
       let firstToken = true
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
 
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed.startsWith('data:')) continue
-          const data = trimmed.slice(5).trim()
-          if (data === '[DONE]') continue
-          try {
-            const parsed = JSON.parse(data)
-            if (parsed.type === 'text-delta' && parsed.delta) {
-              if (firstToken) {
-                setIsTyping(false)
-                firstToken = false
-              }
-              fullText += parsed.delta
-              setMessages((prev) => {
-                const next = [...prev]
-                next[next.length - 1] = { role: 'ai', text: fullText }
-                return next
-              })
-            }
-          } catch {
-            // skip malformed chunk
-          }
+        const delta = decoder.decode(value, { stream: true })
+        if (!delta) continue
+        if (firstToken) {
+          setIsTyping(false)
+          firstToken = false
         }
+        fullText += delta
+        setMessages((prev) => {
+          const next = [...prev]
+          next[next.length - 1] = { role: 'ai', text: fullText }
+          return next
+        })
       }
 
       setIsTyping(false)
-      if (fullText) await saveMessage(companion.id, 'ai', fullText)
-    } catch {
+    } catch (err) {
       setIsTyping(false)
+      setXp(xp)
+      setLevel(level)
+      setMsgCount((n) => Math.max(0, n - 1))
       setMessages((prev) => {
         const next = [...prev]
-        next[next.length - 1] = { role: 'ai', text: 'I ran into a hiccup connecting — give me a moment and try again.' }
+        next[next.length - 1] = {
+          role: 'ai',
+          text: err instanceof Error
+            ? err.message
+            : 'I ran into a hiccup connecting - give me a moment and try again.',
+        }
         return next
       })
     }
@@ -200,7 +187,7 @@ export default function CompanionDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="size-16 rounded-full animate-pulse" style={{ background: 'oklch(0.75 0.18 195 / 20%)' }} />
-          <p className="text-muted-foreground text-sm">Loading companion…</p>
+          <p className="text-muted-foreground text-sm">Loading agent...</p>
         </div>
       </div>
     )
@@ -223,7 +210,7 @@ export default function CompanionDetailPage() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left sidebar */}
           <div className="flex flex-col gap-4">
-            {/* Companion card */}
+            {/* Agent card */}
             <div className="card-glass rounded-2xl p-5 flex flex-col gap-4" style={{ border: `1px solid ${companion.color}30` }}>
               {/* Avatar */}
               <div className="flex flex-col items-center gap-3 pt-2">
@@ -298,18 +285,9 @@ export default function CompanionDetailPage() {
                 </div>
               </div>
               <div className="mt-1 p-3 rounded-xl text-xs text-muted-foreground leading-relaxed" style={{ background: 'oklch(0.16 0.015 260)' }}>
-                <span className="text-foreground font-semibold">Tip:</span> Chat regularly to earn XP and level up your companion. Higher levels unlock more advanced capabilities.
+                <span className="text-foreground font-semibold">Tip:</span> Chat regularly to earn XP and build continuity with your agent. Upgrades from the Shop add new capabilities.
               </div>
 
-              {/* Deploy button */}
-              <Button
-                onClick={() => setShowDeploy(true)}
-                className="w-full gap-2 font-semibold text-sm mt-1"
-                style={{ background: companion.color, color: '#000' }}
-              >
-                <Download className="size-4" />
-                Deploy My AI
-              </Button>
             </div>
 
             {/* Installed Skills */}
@@ -331,7 +309,7 @@ export default function CompanionDetailPage() {
                 <div className="flex flex-col gap-2">
                   {installedSkills.map((skill) => (
                     <div
-                      key={skill.id}
+                      key={skill.skill_id}
                       className="flex items-center gap-2.5 p-2.5 rounded-xl"
                       style={{ background: 'oklch(0.16 0.015 260)', border: `1px solid ${companion.color}15` }}
                     >
@@ -341,7 +319,7 @@ export default function CompanionDetailPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold truncate">{skill.skill_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(skill.installed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {new Date(skill.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </p>
                       </div>
                     </div>
@@ -424,7 +402,7 @@ export default function CompanionDetailPage() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={`Message ${companion.name}…`}
+                    placeholder={`Message ${companion.name}...`}
                     className="flex-1 text-sm"
                     style={{ background: 'oklch(0.16 0.015 260)', border: `1px solid ${companion.color}20` }}
                     disabled={isTyping}
@@ -449,13 +427,6 @@ export default function CompanionDetailPage() {
         </div>
       </div>
 
-      {/* Deploy Modal */}
-      {showDeploy && companion && (
-        <DeployModal
-          companion={{ ...companion, level }}
-          onClose={() => setShowDeploy(false)}
-        />
-      )}
     </div>
   )
 }

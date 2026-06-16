@@ -1,5 +1,17 @@
 import 'server-only'
 import Stripe from 'stripe'
 
-const stripeKey = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_for_build'
-export const stripe = new Stripe(stripeKey)
+let stripeClient: Stripe | null = null
+
+export function getStripe(): Stripe {
+  const stripeKey = process.env.STRIPE_SECRET_KEY
+  if (!stripeKey) {
+    throw new Error('STRIPE_SECRET_KEY is not configured')
+  }
+
+  stripeClient ??= new Stripe(stripeKey, {
+    apiVersion: '2026-05-27.dahlia',
+  })
+
+  return stripeClient
+}

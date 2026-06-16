@@ -31,19 +31,19 @@ export function AssignSkillModal({ pendingSkills, companions, onClose, onAssigne
   const [selectedSkill, setSelectedSkill] = useState<PendingSkill | null>(
     pendingSkills[0] ?? null
   )
-  const [selectedCompanion, setSelectedCompanion] = useState<Companion | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<Companion | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [justAssigned, setJustAssigned] = useState<string | null>(null)
 
   async function handleAssign() {
-    if (!selectedSkill || !selectedCompanion) return
+    if (!selectedSkill || !selectedAgent) return
     setLoading(true)
     setError(null)
     try {
       const result = await assignPendingSkill(
         selectedSkill.id,
-        selectedCompanion.id,
+        selectedAgent.id,
         selectedSkill.skill_id,
         selectedSkill.skill_name,
       )
@@ -57,7 +57,7 @@ export function AssignSkillModal({ pendingSkills, companions, onClose, onAssigne
       // Move to next pending skill if any
       const remaining = pendingSkills.filter((s) => s.id !== selectedSkill.id)
       setSelectedSkill(remaining[0] ?? null)
-      setSelectedCompanion(null)
+      setSelectedAgent(null)
 
       setTimeout(() => setJustAssigned(null), 2500)
     } catch {
@@ -114,7 +114,7 @@ export function AssignSkillModal({ pendingSkills, companions, onClose, onAssigne
               <Check className="size-6" style={{ color: 'oklch(0.82 0.2 195)' }} />
             </div>
             <p className="font-semibold text-foreground">All upgrades assigned!</p>
-            <p className="text-sm text-muted-foreground">Your companions are ready.</p>
+            <p className="text-sm text-muted-foreground">Your agents are ready.</p>
             <Button onClick={onClose} className="mt-2"
               style={{ background: 'oklch(0.75 0.18 195)', color: '#000', fontWeight: 600 }}>
               Done
@@ -143,7 +143,7 @@ export function AssignSkillModal({ pendingSkills, companions, onClose, onAssigne
                   return (
                     <button
                       key={skill.id}
-                      onClick={() => { setSelectedSkill(skill); setSelectedCompanion(null) }}
+                      onClick={() => { setSelectedSkill(skill); setSelectedAgent(null) }}
                       className="flex items-center gap-3 p-3 rounded-xl text-left w-full transition-all"
                       style={{
                         background: isSelected ? 'oklch(0.75 0.18 195 / 12%)' : 'oklch(0.08 0.01 260)',
@@ -167,26 +167,26 @@ export function AssignSkillModal({ pendingSkills, companions, onClose, onAssigne
               </div>
             </div>
 
-            {/* Step 2: Pick a companion */}
+            {/* Step 2: Pick an agent */}
             {selectedSkill && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                  2. Choose which companion gets it
+                  2. Choose which agent gets it
                 </p>
                 {companions.length === 0 ? (
                   <div className="text-sm text-muted-foreground p-4 rounded-xl text-center"
                     style={{ background: 'oklch(0.08 0.01 260)', border: '1px solid oklch(0.14 0.01 260)' }}>
-                    You don't have any purchased companions yet.
+                    You don't have any purchased agents yet.
                     Buy one from the store first!
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {companions.map((c) => {
-                      const isSelected = selectedCompanion?.id === c.id
+                      const isSelected = selectedAgent?.id === c.id
                       return (
                         <button
                           key={c.id}
-                          onClick={() => setSelectedCompanion(c)}
+                          onClick={() => setSelectedAgent(c)}
                           className="flex items-center gap-3 p-3 rounded-xl text-left w-full transition-all"
                           style={{
                             background: isSelected ? `${c.color}12` : 'oklch(0.08 0.01 260)',
@@ -218,20 +218,20 @@ export function AssignSkillModal({ pendingSkills, companions, onClose, onAssigne
             {/* Assign button */}
             <Button
               onClick={handleAssign}
-              disabled={!selectedSkill || !selectedCompanion || loading}
+              disabled={!selectedSkill || !selectedAgent || loading}
               className="w-full gap-2 font-semibold h-11"
               style={{ background: 'oklch(0.75 0.18 195)', color: '#000' }}
             >
               {loading ? (
-                <span className="animate-spin">⟳</span>
+                <span className="animate-spin">...</span>
               ) : (
                 <ChevronRight className="size-4" />
               )}
               {loading
                 ? 'Installing...'
-                : selectedSkill && selectedCompanion
-                ? `Install ${selectedSkill.skill_name} on ${selectedCompanion.name}`
-                : 'Select a skill and companion above'}
+                : selectedSkill && selectedAgent
+                ? `Install ${selectedSkill.skill_name} on ${selectedAgent.name}`
+                : 'Select a skill and agent above'}
             </Button>
 
           </div>

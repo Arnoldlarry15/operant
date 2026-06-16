@@ -1,8 +1,9 @@
+import 'server-only'
 import { Pool, type PoolClient } from 'pg'
 import { Signer } from '@aws-sdk/rds-signer'
 
 // ---------------------------------------------------------------------------
-// Lazy pool — created only on first actual query, not at import time.
+// Lazy pool - created only on first actual query, not at import time.
 // This prevents crashes during Next.js static prerender / build where the
 // Vercel OIDC context and AWS env vars are not present.
 // ---------------------------------------------------------------------------

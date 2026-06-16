@@ -1,15 +1,16 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { Loader2, CheckCircle, ArrowRight, Download } from 'lucide-react'
+import { AlertCircle, Loader2, CheckCircle, ArrowRight, Download, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { startCheckoutSession, fulfillOrder } from '@/lib/stripe-actions'
 import { useAppState } from '@/lib/app-state'
-import type { CheckoutCartItem } from '@/lib/actions'
+import type { CheckoutCartItem } from '@/lib/checkout-types'
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
 
 type PurchasedCompanion = {
   id: string
@@ -27,20 +28,70 @@ type Props = {
 
 export function StripeCheckout({ items, onSuccess, onCancel }: Props) {
   const [completing, setCompleting] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [fulfillmentError, setFulfillmentError] = useState<string | null>(null)
+  const [checkoutAttempt, setCheckoutAttempt] = useState(0)
+  const sessionIdRef = useRef<string | null>(null)
   const { clearCart } = useAppState()
 
   const fetchClientSecret = useCallback(
-    () => startCheckoutSession(items),
+    async () => {
+      setCheckoutError(null)
+      try {
+        const session = await startCheckoutSession(items)
+        setSessionId(session.sessionId)
+        sessionIdRef.current = session.sessionId
+        return session.clientSecret
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Checkout could not be started.'
+        setCheckoutError(message)
+        throw err
+      }
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(items)]
+    [JSON.stringify(items), checkoutAttempt]
   )
 
-  const handleComplete = useCallback(() => {
-    // Stripe calls this with no arguments when checkout completes
-    // Fulfillment happens server-side via webhook; this just closes the checkout UI
-    clearCart()
-    onSuccess([])
-  }, [clearCart, onSuccess])
+  const handleComplete = useCallback(async () => {
+    setCompleting(true)
+    setFulfillmentError(null)
+    try {
+      const completedSessionId = sessionIdRef.current ?? sessionId
+      if (!completedSessionId) {
+        throw new Error('Missing checkout session id. Please retry finalizing from this screen.')
+      }
+
+      const result = await fulfillOrder(completedSessionId)
+      if (!result?.success) {
+        throw new Error(result?.error ?? 'Payment succeeded, but agent provisioning did not finish.')
+      }
+
+      const companions = result?.success ? result.companions : []
+      clearCart()
+      onSuccess(companions)
+    } catch (err) {
+      setFulfillmentError(err instanceof Error ? err.message : 'Payment succeeded, but fulfillment failed.')
+    } finally {
+      setCompleting(false)
+    }
+  }, [clearCart, onSuccess, sessionId])
+
+  if (!stripePublishableKey) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-4 py-12">
+        <div className="flex flex-col gap-1">
+          <p className="font-heading font-bold text-xl">Checkout is not configured</p>
+          <p className="text-muted-foreground text-sm">
+            Add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY before accepting payments.
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onCancel}>
+          Back to cart
+        </Button>
+      </div>
+    )
+  }
 
   if (completing) {
     return (
@@ -53,7 +104,65 @@ export function StripeCheckout({ items, onSuccess, onCancel }: Props) {
         </div>
         <div className="flex flex-col gap-1">
           <p className="font-heading font-bold text-xl">Finalizing your order</p>
-          <p className="text-muted-foreground text-sm">Setting up your AI companion...</p>
+          <p className="text-muted-foreground text-sm">Setting up your AI agent...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (fulfillmentError) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center px-4 py-12">
+        <div
+          className="size-20 rounded-full flex items-center justify-center"
+          style={{ background: 'oklch(0.72 0.18 35 / 15%)', border: '2px solid oklch(0.72 0.18 35 / 30%)' }}
+        >
+          <AlertCircle className="size-9" style={{ color: 'oklch(0.72 0.18 35)' }} />
+        </div>
+        <div className="flex flex-col gap-2 max-w-sm">
+          <p className="font-heading font-bold text-xl">Payment received, setup needs a retry</p>
+          <p className="text-muted-foreground text-sm">{fulfillmentError}</p>
+        </div>
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+          <Button className="w-full font-semibold" onClick={handleComplete}>
+            <RefreshCw className="size-4" data-icon="inline-start" />
+            Retry setup
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            Back to cart
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (checkoutError) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center px-4 py-12">
+        <div
+          className="size-20 rounded-full flex items-center justify-center"
+          style={{ background: 'oklch(0.72 0.18 35 / 15%)', border: '2px solid oklch(0.72 0.18 35 / 30%)' }}
+        >
+          <AlertCircle className="size-9" style={{ color: 'oklch(0.72 0.18 35)' }} />
+        </div>
+        <div className="flex flex-col gap-2 max-w-sm">
+          <p className="font-heading font-bold text-xl">Checkout is unavailable</p>
+          <p className="text-muted-foreground text-sm">{checkoutError}</p>
+        </div>
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+          <Button
+            className="w-full font-semibold"
+            onClick={() => {
+              setCheckoutError(null)
+              setCheckoutAttempt((attempt) => attempt + 1)
+            }}
+          >
+            <RefreshCw className="size-4" data-icon="inline-start" />
+            Retry checkout
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            Back to cart
+          </Button>
         </div>
       </div>
     )
@@ -63,6 +172,7 @@ export function StripeCheckout({ items, onSuccess, onCancel }: Props) {
     <div className="flex-1 flex flex-col">
       <div className="flex-1 overflow-y-auto">
         <EmbeddedCheckoutProvider
+          key={checkoutAttempt}
           stripe={stripePromise}
           options={{
             fetchClientSecret,
@@ -107,14 +217,14 @@ export function CheckoutSuccess({ companions, onGoToDashboard, onKeepShopping, o
           </p>
           <p className="text-xs text-muted-foreground">
             {companions.length > 0
-              ? `${companions.length} companion${companions.length > 1 ? 's have' : ' has'} been added to your account.`
-              : 'Your purchase has been recorded.'}
+              ? `${companions.length} agent${companions.length > 1 ? 's have' : ' has'} been added to your account.`
+              : 'Your purchase is recorded. Open your dashboard to see fulfilled agents and upgrades.'}
           </p>
         </div>
 
         {companions.length > 0 && (
           <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">Your New AI{companions.length > 1 ? 's' : ''}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">Your New Agent{companions.length > 1 ? 's' : ''}</p>
             {companions.map((c) => (
               <div
                 key={c.id}
@@ -125,11 +235,11 @@ export function CheckoutSuccess({ companions, onGoToDashboard, onKeepShopping, o
                   className="size-12 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
                   style={{ background: `${c.color}15`, border: `1px solid ${c.color}30` }}
                 >
-                  {c.emoji || '🤖'}
+                  {c.emoji || 'AI'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-heading font-bold text-sm truncate" style={{ color: c.color }}>{c.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{c.companion_type} AI</p>
+                  <p className="text-xs text-muted-foreground capitalize">{c.companion_type} agent</p>
                 </div>
                 <Button
                   size="sm"
@@ -162,3 +272,4 @@ export function CheckoutSuccess({ companions, onGoToDashboard, onKeepShopping, o
     </>
   )
 }
+

@@ -1,25 +1,74 @@
 import { NextRequest } from 'next/server'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import { fulfillCheckoutSession } from '@/lib/fulfill-order'
+import { updateOrderStatusByStripeSession } from '@/lib/queries'
 import type Stripe from 'stripe'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-// Stripe requires the raw body — Next.js must NOT parse it
 export const preferredRegion = 'auto'
 
-/**
- * POST /api/webhooks/stripe
- *
- * Handles Stripe webhook events. Register this URL in your Stripe dashboard:
- *   https://dashboard.stripe.com/webhooks
- *   → Add endpoint → https://yourdomain.com/api/webhooks/stripe
- *   → Select events: checkout.session.completed, payment_intent.payment_failed
- *
- * Set STRIPE_WEBHOOK_SECRET in your Vercel environment variables.
- * Get the secret from: Stripe Dashboard → Webhooks → your endpoint → Signing secret
- */
+async function fulfillPaidCheckoutSession(session: Stripe.Checkout.Session): Promise<Response | null> {
+  if (session.payment_status !== 'paid') {
+    console.log(
+      `[stripe-webhook] Checkout session ${session.id} is ${session.payment_status}; waiting for paid confirmation.`,
+    )
+    return null
+  }
+
+  console.log(`[stripe-webhook] Fulfilling session: ${session.id}`)
+  const result = await fulfillCheckoutSession(session.id)
+
+  if (!result.success) {
+    if (result.error.startsWith('Payment not completed')) {
+      console.log(`[stripe-webhook] Session ${session.id} is not paid yet; waiting for a later Stripe event.`)
+      return null
+    }
+
+    console.error(`[stripe-webhook] Fulfillment failed for ${session.id}:`, result.error)
+    return new Response(`Fulfillment failed: ${result.error}`, { status: 500 })
+  }
+
+  if (result.alreadyFulfilled) {
+    console.log(`[stripe-webhook] Session ${session.id} was already fulfilled; skipping`)
+  } else {
+    console.log(
+      `[stripe-webhook] Session ${session.id} fulfilled. ` +
+      `Created ${result.companions.length} agent(s): ` +
+      result.companions.map((agent) => agent.name).join(', '),
+    )
+  }
+
+  return null
+}
+
+async function markRefundedOrderFromCharge(charge: Stripe.Charge): Promise<void> {
+  const paymentIntent =
+    typeof charge.payment_intent === 'string'
+      ? charge.payment_intent
+      : charge.payment_intent?.id
+
+  if (!paymentIntent) {
+    console.warn(`[stripe-webhook] Refunded charge ${charge.id} has no payment intent; order status not updated.`)
+    return
+  }
+
+  const stripe = getStripe()
+  const sessions = await stripe.checkout.sessions.list({
+    payment_intent: paymentIntent,
+    limit: 1,
+  })
+  const session = sessions.data[0]
+
+  if (!session) {
+    console.warn(`[stripe-webhook] No checkout session found for refunded payment intent: ${paymentIntent}`)
+    return
+  }
+
+  await updateOrderStatusByStripeSession(session.id, 'refunded', { allowCompleted: true })
+  console.warn(`[stripe-webhook] Marked checkout session ${session.id} refunded from charge ${charge.id}`)
+}
+
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
@@ -28,7 +77,6 @@ export async function POST(req: NextRequest) {
     return new Response('Webhook secret not configured', { status: 500 })
   }
 
-  // Read raw body — required for signature verification
   const body = await req.text()
   const signature = req.headers.get('stripe-signature')
 
@@ -36,9 +84,9 @@ export async function POST(req: NextRequest) {
     return new Response('Missing stripe-signature header', { status: 400 })
   }
 
-  // Verify the event came from Stripe, not an attacker
   let event: Stripe.Event
   try {
+    const stripe = getStripe()
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err) {
     console.error('[stripe-webhook] Signature verification failed:', err)
@@ -47,62 +95,52 @@ export async function POST(req: NextRequest) {
 
   console.log(`[stripe-webhook] Received event: ${event.type} (${event.id})`)
 
-  // ── Handle events ──────────────────────────────────────────────────────────
-
   switch (event.type) {
-    case 'checkout.session.completed': {
+    case 'checkout.session.completed':
+    case 'checkout.session.async_payment_succeeded': {
+      const response = await fulfillPaidCheckoutSession(event.data.object as Stripe.Checkout.Session)
+      if (response) return response
+      break
+    }
+
+    case 'checkout.session.async_payment_failed': {
       const session = event.data.object as Stripe.Checkout.Session
+      await updateOrderStatusByStripeSession(session.id, 'failed')
+      console.warn(`[stripe-webhook] Async payment failed for checkout session: ${session.id}`)
+      break
+    }
 
-      // Only fulfill embedded checkout sessions (not payment links, subscriptions, etc.)
-      // if (session.ui_mode != null && session.ui_mode !== 'embedded') break
-
-      console.log(`[stripe-webhook] Fulfilling session: ${session.id}`)
-      const result = await fulfillCheckoutSession(session.id)
-
-      if (!result.success) {
-        console.error(`[stripe-webhook] Fulfillment failed for ${session.id}:`, result.error)
-        // Return 500 so Stripe retries the webhook
-        return new Response(`Fulfillment failed: ${result.error}`, { status: 500 })
-      }
-
-      if (result.alreadyFulfilled) {
-        console.log(`[stripe-webhook] Session ${session.id} was already fulfilled — skipping`)
-      } else {
-        console.log(
-          `[stripe-webhook] Session ${session.id} fulfilled. ` +
-          `Created ${result.companions.length} companion(s): ` +
-          result.companions.map((c) => c.name).join(', ')
-        )
-      }
-
+    case 'checkout.session.expired': {
+      const session = event.data.object as Stripe.Checkout.Session
+      await updateOrderStatusByStripeSession(session.id, 'failed')
+      console.warn(`[stripe-webhook] Checkout session expired: ${session.id}`)
       break
     }
 
     case 'payment_intent.payment_failed': {
       const paymentIntent = event.data.object as Stripe.PaymentIntent
-      // Log failed payments for monitoring — nothing to undo since we only
-      // create companions after payment succeeds
       console.warn(
-        `[stripe-webhook] Payment failed: ${paymentIntent.id} — ` +
-        `${paymentIntent.last_payment_error?.message ?? 'unknown reason'}`
+        `[stripe-webhook] Payment failed: ${paymentIntent.id} - ` +
+        `${paymentIntent.last_payment_error?.message ?? 'unknown reason'}`,
       )
       break
     }
 
+    case 'charge.refunded': {
+      await markRefundedOrderFromCharge(event.data.object as Stripe.Charge)
+      break
+    }
+
     case 'charge.dispute.created': {
-      // A user has disputed a charge — flag the order for review
       const dispute = event.data.object as Stripe.Dispute
       console.warn(`[stripe-webhook] Dispute created: ${dispute.id} on charge ${dispute.charge}`)
-      // TODO: notify your team via email/Slack and suspend the companion if needed
       break
     }
 
     default:
-      // Ignore unhandled event types — return 200 so Stripe doesn't retry
       console.log(`[stripe-webhook] Unhandled event type: ${event.type}`)
   }
 
-  // Always return 200 for handled events — anything else triggers Stripe retries
   return new Response(JSON.stringify({ received: true }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
