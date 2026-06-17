@@ -4,6 +4,7 @@ import './globals.css'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ClientProviders } from '@/components/client-providers'
 import { Toaster } from 'sonner'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const inter = Inter({ variable: '--font-inter', subsets: ['latin'] })
 const spaceGrotesk = Space_Grotesk({ variable: '--font-space-grotesk', subsets: ['latin'] })
@@ -42,8 +43,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             />
           </TooltipProvider>
         </ClientProviders>
+        <SpeedInsights />
       </body>
     </html>
   )
 }
-

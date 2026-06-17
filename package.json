@@ -21,6 +21,7 @@
     "@supabase/supabase-js": "^2.108.1",
     "@vercel/analytics": "1.6.1",
     "@vercel/functions": "^3.7.0",
+    "@vercel/speed-insights": "^2.0.0",
     "ai": "^6.0.199",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
