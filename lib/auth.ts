@@ -2,6 +2,8 @@ import { getCognitoUserFromCookies } from './cognito'
 import { ensureUser } from './queries'
 import type { UserRow } from './types'
 
+console.log('COGNITO POOL ID:', process.env.COGNITO_USER_POOL_ID)
+console.log('COGNITO CLIENT ID:', process.env.COGNITO_USER_POOL_CLIENT_ID)
 /**
  * Resolves the currently authenticated user (via AWS Cognito) and ensures a
  * matching row exists in the Aurora `users` table. Returns null if there is no

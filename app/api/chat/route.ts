@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 
     await saveMessage(user.id, companionId, 'user', message)
 
-    const history = await getConversation(user.id, companionId, 100)
+    const history = await getConversation(user.id, companionId, 30)
     const modelMessages: ModelMessage[] = history.map((m) => ({
       role: m.role === 'system' ? 'system' : m.role,
       content: m.content,

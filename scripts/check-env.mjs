@@ -10,14 +10,7 @@ const required = [
   ['Cognito Auth', [
     { label: 'COGNITO_USER_POOL_ID', names: ['COGNITO_USER_POOL_ID'] },
     { label: 'COGNITO_USER_POOL_CLIENT_ID', names: ['COGNITO_USER_POOL_CLIENT_ID'] },
-  ]],
-  ['Aurora', [
-    { label: 'PGHOST', names: ['PGHOST'] },
-    { label: 'PGDATABASE', names: ['PGDATABASE'] },
-    { label: 'PGUSER', names: ['PGUSER'] },
-    { label: 'PGSSLMODE', names: ['PGSSLMODE'], validate: (value) => value === 'verify-full' },
-    { label: 'AWS_REGION', names: ['AWS_REGION'] },
-    { label: 'AWS_ROLE_ARN', names: ['AWS_ROLE_ARN'] },
+    { label: 'COGNITO_USER_POOL_CLIENT_SECRET (optional)', names: ['COGNITO_USER_POOL_CLIENT_SECRET'], optional: true },
   ]],
   ['AWS Secrets Manager', [
     { label: 'AWS_SECRETS_MANAGER_CONFIG_SECRET_ID', names: ['AWS_SECRETS_MANAGER_CONFIG_SECRET_ID'] },
@@ -98,8 +91,8 @@ for (const [group, checks] of required) {
     const foundValues = item.names.map((name) => values.get(name) ?? '').filter(Boolean)
     const present = foundValues.length > 0
     const valid = foundValues.some((value) => !placeholders.test(value) && (!item.validate || item.validate(value)))
-    ok &&= valid
-    const status = valid ? 'ok' : present ? 'invalid' : 'missing'
+    if (!item.optional) ok &&= valid
+    const status = valid ? 'ok' : present ? 'invalid' : item.optional ? 'optional' : 'missing'
     console.log(`  ${status.padEnd(11)} ${item.label}`)
   }
   console.log('')

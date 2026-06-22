@@ -42,6 +42,10 @@ function getPool(): Pool {
     connectionTimeoutMillis: 30_000,
   })
 
+  pool.on('error', (err) => {
+  console.error('[db] idle client error', err)
+})
+
   attachDatabasePool(pool)
   g.__operantPool = pool
   return pool
