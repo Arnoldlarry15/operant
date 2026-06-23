@@ -2,7 +2,6 @@ import 'server-only'
 
 import {
   CognitoIdentityProviderClient,
-  ConfirmSignUpCommand,
   GetUserCommand,
   InitiateAuthCommand,
   SignUpCommand,
@@ -143,52 +142,23 @@ export async function signUpWithCognito(input: {
   )
 }
 
-export async function confirmSignUpWithCognito(email: string, code: string): Promise<void> {
-  const secretHash = getSecretHash(email)
-  await getCognitoClient().send(
-    new ConfirmSignUpCommand({
-      ClientId: getUserPoolClientId(),
-      Username: email,
-      ConfirmationCode: code,
-      ...(secretHash ? { SecretHash: secretHash } : {}),
-    }),
-  )
-}
+
 
 export async function refreshCognitoSession(): Promise<AuthenticationResultType | null> {
   const cookieStore = await cookies()
   const refreshToken = cookieStore.get(authCookieNames.refresh)?.value
   if (!refreshToken) return null
 
-  const clientId = getUserPoolClientId()
-  const clientSecret = process.env.COGNITO_USER_POOL_CLIENT_SECRET
+  const result = await getCognitoClient().send(
+    new InitiateAuthCommand({
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
+      ClientId: getUserPoolClientId(),
+      AuthParameters: {
+        REFRESH_TOKEN: refreshToken,
+      },
+    }),
+  )
 
-  // For refresh token flow, SECRET_HASH uses the username stored in the id token
-  const idToken = cookieStore.get(authCookieNames.id)?.value
-  let username = ''
-  if (idToken) {
-    try {
-      const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString())
-      username = payload['cognito:username'] ?? payload.sub ?? ''
-    } catch {
-      username = ''
-    }
-  }
-
-  const secretHash = clientSecret
-    ? crypto.createHmac('sha256', clientSecret).update(`${username}${clientId}`).digest('base64')
-    : undefined
-
-    const result = await getCognitoClient().send(
-      new InitiateAuthCommand({
-        AuthFlow: 'REFRESH_TOKEN_AUTH',
-        ClientId: clientId,
-        AuthParameters: {
-          REFRESH_TOKEN: refreshToken,
-          ...(secretHash ? { SECRET_HASH: secretHash } : {}),
-        },
-      }),
-    )
   return result.AuthenticationResult ?? null
 }
 
