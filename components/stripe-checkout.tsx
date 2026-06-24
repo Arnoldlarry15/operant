@@ -77,13 +77,13 @@ export function StripeCheckout({ items, onSuccess, onCancel }: Props) {
     }
   }, [clearCart, onSuccess, sessionId])
 
-  if (!stripePublishableKey) {
+  if (!stripePublishableKey || !stripePromise) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-4 py-12">
         <div className="flex flex-col gap-1">
           <p className="font-heading font-bold text-xl">Checkout is not configured</p>
           <p className="text-muted-foreground text-sm">
-            Add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY before accepting payments.
+            The payment system is not properly configured. Please contact support.
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={onCancel}>
@@ -272,4 +272,3 @@ export function CheckoutSuccess({ companions, onGoToDashboard, onKeepShopping, o
     </>
   )
 }
-

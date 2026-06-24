@@ -35,8 +35,8 @@ export async function POST(req: Request) {
     }))
 
     return NextResponse.json({ ok: true })
-    } catch (err: unknown) {
-  const message = err instanceof Error ? err.message : 'Confirmation failed'
-  return NextResponse.json({ error: message }, { status: 400 })
-    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Confirmation failed'
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
 }

@@ -35,7 +35,7 @@ function ConfirmForm() {
       return
     }
 
-        router.push('/auth/login?confirmed=true')
+    router.push('/auth/login?confirmed=true')
   }
 
   return (

@@ -263,8 +263,7 @@ export function Navbar() {
                       className="p-3 rounded-xl text-xs text-center"
                       style={{ background: 'oklch(0.75 0.18 195 / 10%)', color: 'oklch(0.75 0.18 195)', border: '1px solid oklch(0.75 0.18 195 / 20%)' }}
                     >
-                      Sign in to complete your purchase.{' '}
-                      <Link href="/auth/login" className="underline font-semibold">Sign in</Link>
+                      <Link href="/auth/login" className="underline font-semibold">Sign in</Link> to complete your purchase.
                     </div>
                   )}
 

@@ -35,8 +35,9 @@ export default function LoginPage() {
       return
     }
 
-    router.push(searchParams.get('next') ?? '/')
+    await new Promise(resolve => setTimeout(resolve, 100))
     router.refresh()
+    router.push(searchParams.get('next') ?? '/')
   }
 
   return (
