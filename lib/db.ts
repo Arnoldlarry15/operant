@@ -43,8 +43,8 @@ function getPool(): Pool {
   })
 
   pool.on('error', (err) => {
-  console.error('[db] idle client error', err)
-})
+    console.error('[db] idle client error', err)
+  })
 
   attachDatabasePool(pool)
   g.__operantPool = pool

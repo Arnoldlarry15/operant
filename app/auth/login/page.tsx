@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { OperantLogo } from '@/components/operant-logo'
+import { toast } from 'sonner'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -35,9 +36,11 @@ export default function LoginPage() {
       return
     }
 
+    setError(null)
+    toast.success('Welcome back! Signing you in...')
     await new Promise(resolve => setTimeout(resolve, 100))
-    router.refresh()
     router.push(searchParams.get('next') ?? '/')
+    router.refresh()
   }
 
   return (

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { OperantLogo } from '@/components/operant-logo'
+import { toast } from 'sonner'
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -39,6 +40,7 @@ export default function SignUpPage() {
       return
     }
 
+    toast.success('Account created! Check your email to confirm.')
     router.push(`/auth/confirm?email=${encodeURIComponent(email)}`)
   }
 

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { OperantLogo } from '@/components/operant-logo'
+import { toast } from 'sonner'
 
 function ConfirmForm() {
   const router = useRouter()
@@ -35,6 +36,7 @@ function ConfirmForm() {
       return
     }
 
+    toast.success('Email confirmed! You can now sign in.')
     router.push('/auth/login?confirmed=true')
   }
 

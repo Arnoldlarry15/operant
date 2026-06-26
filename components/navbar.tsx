@@ -153,17 +153,20 @@ export function Navbar() {
             </div>
           ) : (
             <div className="hidden md:flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="text-sm" render={<Link href="/auth/login" />}>
-                Sign In
-              </Button>
-              <Button
-                size="sm"
-                className="text-sm font-semibold"
-                style={{ background: 'oklch(0.75 0.18 195)', color: '#000' }}
-                render={<Link href="/auth/sign-up" />}
-              >
-                Join Free
-              </Button>
+              <Link href="/auth/login">
+                <Button variant="ghost" size="sm" className="text-sm">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/auth/sign-up">
+                <Button
+                  size="sm"
+                  className="text-sm font-semibold"
+                  style={{ background: 'oklch(0.75 0.18 195)', color: '#000' }}
+                >
+                  Join Free
+                </Button>
+              </Link>
             </div>
           )}
 
@@ -355,16 +358,19 @@ export function Navbar() {
               </Button>
             ) : (
               <div className="flex flex-col gap-2">
-                <Button variant="outline" className="w-full" render={<Link href="/auth/login" onClick={() => setMobileOpen(false)} />}>
-                  Sign In
-                </Button>
-                <Button
-                  className="w-full font-semibold"
-                  style={{ background: 'oklch(0.75 0.18 195)', color: '#000' }}
-                  render={<Link href="/auth/sign-up" onClick={() => setMobileOpen(false)} />}
-                >
-                  Create Free Account
-                </Button>
+                <Link href="/auth/login" onClick={() => setMobileOpen(false)}>
+                  <Button variant="outline" className="w-full">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/auth/sign-up" onClick={() => setMobileOpen(false)}>
+                  <Button
+                    className="w-full font-semibold"
+                    style={{ background: 'oklch(0.75 0.18 195)', color: '#000' }}
+                  >
+                    Create Free Account
+                  </Button>
+                </Link>
               </div>
             )}
           </div>
