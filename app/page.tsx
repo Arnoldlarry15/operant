@@ -1,5 +1,7 @@
 "use client"
 
+export const dynamic = 'force-dynamic'
+
 import { Suspense } from 'react'
 import { useAppState } from '@/lib/app-state'
 import { Navbar } from '@/components/navbar'
