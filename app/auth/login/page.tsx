@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,10 +11,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import Link from 'next/link'
 import { OperantLogo } from '@/components/operant-logo'
 import { toast } from 'sonner'
+import { useAuth } from '@/components/auth-provider'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { refreshProfile } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -44,10 +46,8 @@ function LoginForm() {
       return
     }
 
-    setError(null)
     toast.success('Welcome back! Signing you in...')
-    await router.refresh()
-    await new Promise(resolve => setTimeout(resolve, 150))
+    await refreshProfile()
     router.push(searchParams.get('next') ?? '/')
   }
 
@@ -101,7 +101,7 @@ function LoginForm() {
             </CardContent>
             <CardFooter className="flex flex-col gap-3 pt-2">
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? 'Signing you in...' : 'Sign In'}
               </Button>
               <p className="text-sm text-muted-foreground text-center">
                 {"Don't have an account? "}
