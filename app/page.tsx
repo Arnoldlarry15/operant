@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from 'react'
 import { useAppState } from '@/lib/app-state'
 import { Navbar } from '@/components/navbar'
 import { HomePage } from '@/components/home-page'
@@ -8,12 +9,16 @@ import { PrebuiltPage } from '@/components/prebuilt-page'
 import { ShopPage } from '@/components/shop-page'
 import { DashboardPage } from '@/components/dashboard-page'
 import { Notifications } from '@/components/notifications'
+import { CheckoutReturnHandler } from '@/components/checkout-return-handler'
 
 export default function Page() {
   const { currentPage } = useAppState()
 
   return (
     <>
+      <Suspense>
+        <CheckoutReturnHandler />
+      </Suspense>
       <Navbar />
       <main>
         {currentPage === 'home' && <HomePage />}

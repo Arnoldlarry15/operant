@@ -160,6 +160,8 @@ export async function startCheckoutSession(input: unknown): Promise<CheckoutSess
   })
   const totalCents = orderItems.reduce((sum, item) => sum + Math.round(item.price * 100), 0)
 
+  const cartMetadata = JSON.stringify(orderItems).slice(0, 500)
+
   const session = await stripe.checkout.sessions.create({
     ui_mode: 'embedded_page',
     redirect_on_completion: 'if_required',
@@ -171,6 +173,7 @@ export async function startCheckoutSession(input: unknown): Promise<CheckoutSess
       user_id: user.id,
       user_email: user.email ?? '',
       order_source: 'operant_embedded_checkout',
+      cart: cartMetadata,
     },
   })
 

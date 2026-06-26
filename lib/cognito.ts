@@ -144,10 +144,34 @@ export async function signUpWithCognito(input: {
 
 
 
+function extractUsernameFromIdToken(idToken: string): string | null {
+  try {
+    const parts = idToken.split('.')
+    if (parts.length !== 3) return null
+    const decoded = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'))
+    return decoded.email ?? decoded.cognito_username ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function refreshCognitoSession(): Promise<AuthenticationResultType | null> {
   const cookieStore = await cookies()
   const refreshToken = cookieStore.get(authCookieNames.refresh)?.value
+  const idToken = cookieStore.get(authCookieNames.id)?.value
   if (!refreshToken) return null
+
+  let secretHash: string | undefined
+  const clientSecret = process.env.COGNITO_USER_POOL_CLIENT_SECRET
+  if (clientSecret && idToken) {
+    const username = extractUsernameFromIdToken(idToken)
+    if (username) {
+      secretHash = crypto
+        .createHmac('sha256', clientSecret)
+        .update(`${username}${getUserPoolClientId()}`)
+        .digest('base64')
+    }
+  }
 
   const result = await getCognitoClient().send(
     new InitiateAuthCommand({
@@ -155,6 +179,7 @@ export async function refreshCognitoSession(): Promise<AuthenticationResultType 
       ClientId: getUserPoolClientId(),
       AuthParameters: {
         REFRESH_TOKEN: refreshToken,
+        ...(secretHash ? { SECRET_HASH: secretHash } : {}),
       },
     }),
   )

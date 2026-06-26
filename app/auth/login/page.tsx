@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,13 +10,19 @@ import Link from 'next/link'
 import { OperantLogo } from '@/components/operant-logo'
 import { toast } from 'sonner'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (searchParams.get('confirmed') === 'true') {
+      toast.success('Email confirmed! You can now sign in.')
+    }
+  }, [searchParams])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -38,9 +44,9 @@ export default function LoginPage() {
 
     setError(null)
     toast.success('Welcome back! Signing you in...')
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await router.refresh()
+    await new Promise(resolve => setTimeout(resolve, 150))
     router.push(searchParams.get('next') ?? '/')
-    router.refresh()
   }
 
   return (
@@ -106,5 +112,13 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

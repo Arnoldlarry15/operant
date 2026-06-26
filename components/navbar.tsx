@@ -34,7 +34,7 @@ type PurchasedCompanion = {
 
 export function Navbar() {
   const { currentPage, setPage, cart, cartOpen, setCartOpen, removeFromCart, clearCart } = useAppState()
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut, loading: authLoading } = useAuth()
   const [checkoutState, setCheckoutState] = useState<CheckoutState>('cart')
   const [purchasedCompanions, setPurchasedCompanions] = useState<PurchasedCompanion[]>([])
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -274,7 +274,7 @@ export function Navbar() {
                     className="w-full font-bold text-sm h-11"
                     style={{ background: 'oklch(0.75 0.18 195)', color: '#000' }}
                     onClick={handleCheckout}
-                    disabled={!user}
+                    disabled={authLoading || !user}
                   >
                     <CheckCircle className="size-4" data-icon="inline-start" />
                     Confirm Purchase &mdash; ${total.toFixed(2)}
