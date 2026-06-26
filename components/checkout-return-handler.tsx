@@ -14,7 +14,7 @@ export function CheckoutReturnHandler() {
 
     async function handleReturn() {
       try {
-        await fulfillOrder(sessionId)
+        await fulfillOrder(sessionId as string)
       } catch (err) {
         console.error('Checkout return fulfillment failed:', err)
       }
