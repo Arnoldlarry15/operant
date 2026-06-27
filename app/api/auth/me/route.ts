@@ -35,7 +35,9 @@ export async function GET() {
     return NextResponse.json({ user: null, profile: null }, { status: 401 })
   }
 
+  try {
   const profile = await ensureUser(user.email, user.name)
+
   const response = NextResponse.json({
     user,
     profile: {
@@ -43,6 +45,16 @@ export async function GET() {
       display_name: profile.name,
     },
   })
+
   if (refreshedAuth) setAuthCookies(response, refreshedAuth)
   return response
+
+} catch (err) {
+  console.error("[auth/me] ensureUser failed:", err)
+  return NextResponse.json(
+    {
+      error: String(err),
+    },
+    { status: 500 }
+  )
 }
