@@ -22,13 +22,6 @@ function getPool(): Pool {
       ? false
       : { rejectUnauthorized: sslMode !== 'require' && sslMode !== 'no-verify' }
 
-  console.log('[db] Environment', {
-  PGHOST: process.env.PGHOST,
-  PGDATABASE: process.env.PGDATABASE,
-  PGUSER: process.env.PGUSER,
-  AWS_REGION: process.env.AWS_REGION,
-  })
-
   const signer = new Signer({
     credentials: getAwsCredentials(),
     region: getAwsRegion(),

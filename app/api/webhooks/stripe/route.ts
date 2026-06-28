@@ -11,33 +11,18 @@ export const preferredRegion = 'auto'
 
 async function fulfillPaidCheckoutSession(session: Stripe.Checkout.Session): Promise<Response | null> {
   if (session.payment_status !== 'paid') {
-    console.log(
-      `[stripe-webhook] Checkout session ${session.id} is ${session.payment_status}; waiting for paid confirmation.`,
-    )
     return null
   }
 
-  console.log(`[stripe-webhook] Fulfilling session: ${session.id}`)
   const result = await fulfillCheckoutSession(session.id)
 
   if (!result.success) {
     if (result.error.startsWith('Payment not completed')) {
-      console.log(`[stripe-webhook] Session ${session.id} is not paid yet; waiting for a later Stripe event.`)
       return null
     }
 
     console.error(`[stripe-webhook] Fulfillment failed for ${session.id}:`, result.error)
     return new Response(`Fulfillment failed: ${result.error}`, { status: 500 })
-  }
-
-  if (result.alreadyFulfilled) {
-    console.log(`[stripe-webhook] Session ${session.id} was already fulfilled; skipping`)
-  } else {
-    console.log(
-      `[stripe-webhook] Session ${session.id} fulfilled. ` +
-      `Created ${result.companions.length} agent(s): ` +
-      result.companions.map((agent) => agent.name).join(', '),
-    )
   }
 
   return null
@@ -50,7 +35,6 @@ async function markRefundedOrderFromCharge(charge: Stripe.Charge): Promise<void>
       : charge.payment_intent?.id
 
   if (!paymentIntent) {
-    console.warn(`[stripe-webhook] Refunded charge ${charge.id} has no payment intent; order status not updated.`)
     return
   }
 
@@ -62,12 +46,10 @@ async function markRefundedOrderFromCharge(charge: Stripe.Charge): Promise<void>
   const session = sessions.data[0]
 
   if (!session) {
-    console.warn(`[stripe-webhook] No checkout session found for refunded payment intent: ${paymentIntent}`)
     return
   }
 
   await updateOrderStatusByStripeSession(session.id, 'refunded', { allowCompleted: true })
-  console.warn(`[stripe-webhook] Marked checkout session ${session.id} refunded from charge ${charge.id}`)
 }
 
 export async function POST(req: NextRequest) {
@@ -94,7 +76,6 @@ export async function POST(req: NextRequest) {
     return new Response(`Webhook signature verification failed: ${String(err)}`, { status: 400 })
   }
 
-  console.log(`[stripe-webhook] Received event: ${event.type} (${event.id})`)
   captureServerEvent('stripe-webhook', 'stripe_webhook_received', { type: event.type })
 
   switch (event.type) {
@@ -108,23 +89,16 @@ export async function POST(req: NextRequest) {
     case 'checkout.session.async_payment_failed': {
       const session = event.data.object as Stripe.Checkout.Session
       await updateOrderStatusByStripeSession(session.id, 'failed')
-      console.warn(`[stripe-webhook] Async payment failed for checkout session: ${session.id}`)
       break
     }
 
     case 'checkout.session.expired': {
       const session = event.data.object as Stripe.Checkout.Session
       await updateOrderStatusByStripeSession(session.id, 'failed')
-      console.warn(`[stripe-webhook] Checkout session expired: ${session.id}`)
       break
     }
 
     case 'payment_intent.payment_failed': {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent
-      console.warn(
-        `[stripe-webhook] Payment failed: ${paymentIntent.id} - ` +
-        `${paymentIntent.last_payment_error?.message ?? 'unknown reason'}`,
-      )
       break
     }
 
@@ -134,13 +108,8 @@ export async function POST(req: NextRequest) {
     }
 
     case 'charge.dispute.created': {
-      const dispute = event.data.object as Stripe.Dispute
-      console.warn(`[stripe-webhook] Dispute created: ${dispute.id} on charge ${dispute.charge}`)
       break
     }
-
-    default:
-      console.log(`[stripe-webhook] Unhandled event type: ${event.type}`)
   }
 
   return new Response(JSON.stringify({ received: true }), {

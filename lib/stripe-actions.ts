@@ -121,16 +121,10 @@ function canonicalizeCartItem(item: CheckoutCartItem): CanonicalCheckoutCartItem
  */
 export async function startCheckoutSession(input: unknown): Promise<CheckoutSessionPayload> {
   try {
-    console.log('[checkout] Starting checkout')
-
     const user = await getCurrentUser()
-    console.log('[checkout] User:', user?.email)
-
     if (!user) throw new Error('Not authenticated')
 
     const parsed = checkoutCartSchema.safeParse(input)
-    console.log('[checkout] Cart valid:', parsed.success)
-
     if (!parsed.success) throw new Error('Invalid checkout cart')
 
     const items = parsed.data as CheckoutCartItem[]
@@ -173,8 +167,6 @@ export async function startCheckoutSession(input: unknown): Promise<CheckoutSess
 
     const cartMetadata = JSON.stringify(orderItems).slice(0, 500)
 
-    console.log('[checkout] Creating Stripe session...')
-
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded_page',
       redirect_on_completion: 'if_required',
@@ -190,11 +182,7 @@ export async function startCheckoutSession(input: unknown): Promise<CheckoutSess
       },
     })
 
-    console.log('[checkout] Stripe session created:', session.id)
-
     if (!session.client_secret) throw new Error('Failed to create checkout session')
-
-    console.log('[checkout] Saving pending order to Aurora...')
 
     try {
       await query(
@@ -203,8 +191,6 @@ export async function startCheckoutSession(input: unknown): Promise<CheckoutSess
          ON CONFLICT (stripe_session_id) DO NOTHING`,
         [user.id, JSON.stringify(orderItems), totalCents, session.id],
       )
-
-      console.log('[checkout] Pending order saved.')
     } catch (err) {
       captureServerError(user.id, err, { action: 'start_checkout_session' })
       try {

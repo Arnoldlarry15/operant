@@ -59,17 +59,12 @@ export function Navbar() {
   }
 
   function handleCheckout() {
-    console.log("Checkout clicked");
-    console.log("user:", user);
-    console.log("current state:", checkoutState);
-      if (!user) {
-        console.log("No user");
-        toast.error('Sign in to complete your purchase')
-        return
-      }
-      console.log("Switching to stripe");
-      setCheckoutState('stripe')
+    if (!user) {
+      toast.error('Sign in to complete your purchase')
+      return
     }
+    setCheckoutState('stripe')
+  }
 
   function handleStripeSuccess(companions: PurchasedCompanion[]) {
     clearCart()
@@ -274,9 +269,6 @@ export function Navbar() {
                       <Link href="/auth/login" className="underline font-semibold">Sign in</Link> to complete your purchase.
                     </div>
                   )}
-
-                  <p style={{ color: 'white', fontSize: 12 }}>Loading: {String(authLoading)}</p>
-                  <p style={{ color: 'white', fontSize: 12 }}>User: {user ? user.email : 'null'}</p>
 
                   <Button
                     className="w-full font-bold text-sm h-11"

@@ -47,10 +47,10 @@ export function HomePage() {
   ]
 
   const stats = [
-    { label: 'AI Agents Built', value: '142K+', icon: Bot },
-    { label: 'Skills Available', value: '200+', icon: Zap },
-    { label: 'Happy Users', value: '89K+', icon: Users },
-    { label: 'Avg Rating', value: '4.9 stars', icon: Star },
+    { label: 'AI Agents Built', value: '0', icon: Bot },
+    { label: 'Skills Available', value: '0', icon: Zap },
+    { label: 'Happy Users', value: '0', icon: Users },
+    { label: 'Avg Rating', value: '0', icon: Star },
   ]
 
   return (
@@ -340,5 +340,3 @@ export function HomePage() {
     </div>
   )
 }
-
-
