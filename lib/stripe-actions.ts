@@ -229,6 +229,7 @@ export async function fulfillOrder(sessionId: string) {
   if (!result.success) return { error: result.error }
   captureServerEvent(user.id, 'checkout_fulfillment_confirmed', {
     companionCount: result.companions.length,
+    upgradeCount: result.upgrades.length,
   })
-  return { success: true, companions: result.companions }
+  return { success: true, companions: result.companions, upgrades: result.upgrades }
 }

@@ -32,11 +32,19 @@ type PurchasedCompanion = {
   companion_type: string
 }
 
+type PurchasedUpgrade = {
+  id: string
+  name: string
+  type: 'shop'
+  skillId: string
+}
+
 export function Navbar() {
   const { currentPage, setPage, cart, cartOpen, setCartOpen, removeFromCart, clearCart } = useAppState()
   const { user, profile, signOut, loading: authLoading } = useAuth()
   const [checkoutState, setCheckoutState] = useState<CheckoutState>('cart')
   const [purchasedCompanions, setPurchasedCompanions] = useState<PurchasedCompanion[]>([])
+  const [purchasedUpgrades, setPurchasedUpgrades] = useState<PurchasedUpgrade[]>([])
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const total = cart.reduce((sum, item) => sum + item.price, 0)
@@ -46,6 +54,7 @@ export function Navbar() {
   function handleOpenCart() {
     setCheckoutState('cart')
     setPurchasedCompanions([])
+    setPurchasedUpgrades([])
     setCartOpen(true)
   }
 
@@ -55,6 +64,7 @@ export function Navbar() {
     setTimeout(() => {
       setCheckoutState('cart')
       setPurchasedCompanions([])
+      setPurchasedUpgrades([])
     }, 300)
   }
 
@@ -66,9 +76,10 @@ export function Navbar() {
     setCheckoutState('stripe')
   }
 
-  function handleStripeSuccess(companions: PurchasedCompanion[]) {
+  function handleStripeSuccess(companions: PurchasedCompanion[], upgrades: PurchasedUpgrade[]) {
     clearCart()
     setPurchasedCompanions(companions)
+    setPurchasedUpgrades(upgrades)
     setCheckoutState('success')
   }
 
@@ -321,6 +332,7 @@ export function Navbar() {
               </SheetHeader>
               <CheckoutSuccess
                 companions={purchasedCompanions}
+                upgrades={purchasedUpgrades}
                 onGoToDashboard={handleGoToDashboard}
                 onKeepShopping={handleClose}
                 onGoToCompanion={handleGoToCompanion}

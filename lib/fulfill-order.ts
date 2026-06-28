@@ -16,8 +16,15 @@ export type FulfilledCompanion = {
   companion_type: string
 }
 
+export type FulfilledUpgrade = {
+  id: string
+  name: string
+  type: 'shop'
+  skillId: string
+}
+
 export type FulfillResult =
-  | { success: true; companions: FulfilledCompanion[]; alreadyFulfilled: boolean }
+  | { success: true; companions: FulfilledCompanion[]; upgrades: FulfilledUpgrade[]; alreadyFulfilled: boolean }
   | { success: false; error: string }
 
 type FulfillOptions = {
@@ -160,12 +167,25 @@ async function listFulfilledAgentsForStripeSession(
   }))
 }
 
+async function getPrimaryCompanion(client: PoolClient, userId: string): Promise<CompanionRow | null> {
+  const { rows } = await client.query<CompanionRow>(
+    `SELECT *
+     FROM companions
+     WHERE user_id = $1
+       AND companion_type IN ('prebuilt', 'custom')
+     ORDER BY created_at ASC
+     LIMIT 1`,
+    [userId],
+  )
+  return rows[0] || null
+}
+
 async function writeFulfillmentTransaction(
   userId: string,
   fallbackItems: CanonicalCheckoutCartItem[],
   totalCents: number,
   stripeSessionId: string,
-): Promise<{ companions: FulfilledCompanion[]; alreadyFulfilled: boolean }> {
+): Promise<{ companions: FulfilledCompanion[]; upgrades: FulfilledUpgrade[]; alreadyFulfilled: boolean }> {
   return withTransaction(async (client) => {
     const orderResult = await client.query<FulfillmentOrder>(
       `SELECT *
@@ -182,7 +202,7 @@ async function writeFulfillmentTransaction(
       }
       if (order.status === 'completed') {
         const fulfilledAgents = await listFulfilledAgentsForOrder(client, userId, order.id)
-        return { companions: fulfilledAgents, alreadyFulfilled: true }
+        return { companions: fulfilledAgents, upgrades: [], alreadyFulfilled: true }
       }
       if (order.status !== 'pending') {
         throw new Error(`Order cannot be fulfilled from status: ${order.status}`)
@@ -214,6 +234,7 @@ async function writeFulfillmentTransaction(
     const items = order.items?.length ? order.items : fallbackItems
 
     const createdAgents: FulfilledCompanion[] = []
+    const createdUpgrades: FulfilledUpgrade[] = []
 
     for (const item of items) {
       if (item.type !== 'prebuilt' && item.type !== 'custom') continue
@@ -260,6 +281,9 @@ async function writeFulfillmentTransaction(
       })
     }
 
+    // Find user's primary companion for upgrade assignment
+    const primaryCompanion = await getPrimaryCompanion(client, userId)
+
     for (const item of items) {
       if (item.type !== 'shop') continue
       const pendingSkill = pendingSkillForItem(item)
@@ -267,15 +291,33 @@ async function writeFulfillmentTransaction(
         throw new Error(`Paid upgrade item could not be resolved from catalog: ${item.id}`)
       }
 
-      await client.query(
-        `INSERT INTO pending_skills (user_id, skill_id, skill_name, stripe_session_id)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT DO NOTHING`,
-        [userId, pendingSkill.id, pendingSkill.name, stripeSessionId],
-      )
+      if (primaryCompanion) {
+        // Assign upgrade directly to primary companion
+        await client.query(
+          `INSERT INTO companion_skills (companion_id, user_id, skill_id, skill_name)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (companion_id, skill_id) DO NOTHING`,
+          [primaryCompanion.id, userId, pendingSkill.id, pendingSkill.name],
+        )
+      } else {
+        // No companion exists, use pending_skills as fallback
+        await client.query(
+          `INSERT INTO pending_skills (user_id, skill_id, skill_name, stripe_session_id)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT DO NOTHING`,
+          [userId, pendingSkill.id, pendingSkill.name, stripeSessionId],
+        )
+      }
+
+      createdUpgrades.push({
+        id: pendingSkill.id,
+        name: pendingSkill.name,
+        type: 'shop',
+        skillId: pendingSkill.id,
+      })
     }
 
-    return { companions: createdAgents, alreadyFulfilled: false }
+    return { companions: createdAgents, upgrades: createdUpgrades, alreadyFulfilled: false }
   })
 }
 
@@ -335,12 +377,12 @@ export async function fulfillCheckoutSession(
       session.amount_total ?? 0,
       sessionId,
     )
-    return { success: true, alreadyFulfilled: result.alreadyFulfilled, companions: result.companions }
+    return { success: true, alreadyFulfilled: result.alreadyFulfilled, companions: result.companions, upgrades: result.upgrades }
   } catch (err) {
     const pgErr = err as { code?: string }
     if (pgErr?.code === '23505') {
       const companions = await listFulfilledAgentsForStripeSession(auroraUser.id, sessionId)
-      return { success: true, alreadyFulfilled: true, companions }
+      return { success: true, alreadyFulfilled: true, companions, upgrades: [] }
     }
     return { success: false, error: `Fulfillment transaction failed: ${String(err)}` }
   }

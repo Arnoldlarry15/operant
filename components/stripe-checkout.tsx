@@ -20,9 +20,16 @@ type PurchasedCompanion = {
   companion_type: string
 }
 
+type PurchasedUpgrade = {
+  id: string
+  name: string
+  type: 'shop'
+  skillId: string
+}
+
 type Props = {
   items: CheckoutCartItem[]
-  onSuccess: (companions: PurchasedCompanion[]) => void
+  onSuccess: (companions: PurchasedCompanion[], upgrades: PurchasedUpgrade[]) => void
   onCancel: () => void
 }
 
@@ -69,8 +76,9 @@ export function StripeCheckout({ items, onSuccess, onCancel }: Props) {
       }
 
       const companions = result?.success ? result.companions : []
+      const upgrades = result?.success ? result.upgrades : []
       clearCart()
-      onSuccess(companions)
+      onSuccess(companions, upgrades)
     } catch (err) {
       setFulfillmentError(err instanceof Error ? err.message : 'Payment succeeded, but fulfillment failed.')
     } finally {
@@ -199,12 +207,13 @@ export function StripeCheckout({ items, onSuccess, onCancel }: Props) {
 
 type SuccessProps = {
   companions: PurchasedCompanion[]
+  upgrades: PurchasedUpgrade[]
   onGoToDashboard: () => void
   onKeepShopping: () => void
   onGoToCompanion: (id: string) => void
 }
 
-export function CheckoutSuccess({ companions, onGoToDashboard, onKeepShopping, onGoToCompanion }: SuccessProps) {
+export function CheckoutSuccess({ companions, upgrades, onGoToDashboard, onKeepShopping, onGoToCompanion }: SuccessProps) {
   return (
     <>
       <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-4">
@@ -217,8 +226,8 @@ export function CheckoutSuccess({ companions, onGoToDashboard, onKeepShopping, o
             Payment confirmed!
           </p>
           <p className="text-xs text-muted-foreground">
-            {companions.length > 0
-              ? `${companions.length} agent${companions.length > 1 ? 's have' : ' has'} been added to your account.`
+            {companions.length > 0 || upgrades.length > 0
+              ? `${companions.length} agent${companions.length > 1 ? 's have' : ' has'} been added and ${upgrades.length} upgrade${upgrades.length > 1 ? 's have' : ' has'} been unlocked.`
               : 'Your purchase is recorded. Open your dashboard to see fulfilled agents and upgrades.'}
           </p>
         </div>
@@ -251,6 +260,30 @@ export function CheckoutSuccess({ companions, onGoToDashboard, onKeepShopping, o
                   <Download className="size-3.5" data-icon="inline-start" />
                   Open
                 </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {upgrades.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">Upgrade{upgrades.length > 1 ? 's' : ''} Unlocked</p>
+            {upgrades.map((u) => (
+              <div
+                key={u.id}
+                className="p-4 rounded-2xl flex items-center gap-3 card-glass"
+                style={{ border: '1px solid oklch(0.75 0.18 195 / 25%)' }}
+              >
+                <div
+                  className="size-10 rounded-lg flex items-center justify-center flex-shrink-0 text-lg"
+                  style={{ background: 'oklch(0.75 0.18 195 / 15%)', border: '1px solid oklch(0.75 0.18 195 / 30%)' }}
+                >
+                  ✨
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-heading font-bold text-sm truncate text-foreground">{u.name}</p>
+                  <p className="text-xs text-muted-foreground">Skill upgrade</p>
+                </div>
               </div>
             ))}
           </div>
