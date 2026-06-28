@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState } from 'react'
 import { Check, ChevronRight, ChevronLeft, Zap, Bot, Sparkles, ShoppingCart, Info } from 'lucide-react'
@@ -42,15 +42,16 @@ export function BuilderPage() {
       name: `Custom AI (${selectedPersonality?.name ?? 'Unknown'})`,
       price: totalPrice,
       type: 'custom',
-        companionMeta: {
-          companion_type: 'custom',
-          personality_id: builder.selectedPersonality ?? undefined,
-          core_id: builder.selectedCore ?? undefined,
-          appearance_id: builder.selectedAppearance ?? undefined,
-          color: selectedPersonality?.color ?? '#22d3ee',
-          emoji: '⚡',
-          trait: selectedPersonality?.traits?.[0] ?? 'Helpful and curious',
-        },
+      companionMeta: {
+        companion_type: 'custom',
+        personality_id: builder.selectedPersonality ?? undefined,
+        core_id: builder.selectedCore ?? undefined,
+        appearance_id: builder.selectedAppearance ?? undefined,
+        skill_ids: builder.selectedSkills,
+        color: selectedPersonality?.color ?? '#22d3ee',
+        emoji: '⚡',
+        trait: selectedPersonality?.traits?.[0] ?? 'Helpful and curious',
+      },
     })
     addNotification('Your custom AI has been added to cart!', 'success')
   }
